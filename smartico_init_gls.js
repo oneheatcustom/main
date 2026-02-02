@@ -52,6 +52,11 @@
             brand_key: BRAND_KEY
         });
 
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+            event: 'smartico_initialized'
+        });
+
         bindSmarticoEvents();
     };
 
