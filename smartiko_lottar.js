@@ -11,7 +11,7 @@
       cursor: pointer;
       font-family: 'Parimatch Sans', sans-serif;
       width: fit-content;
-      min-width: 250px;
+      min-width: 220px;
       border: 1px solid #F8FF13;
       z-index: 100;
       position: relative;
@@ -75,7 +75,7 @@
     };
     anchor.parentNode.insertBefore(banner, anchor.nextSibling);
   }
-  function updateData() {
+function updateData() {
     if (!isTargetGame()) {
       var existing = document.querySelector('.smartico-raffle-banner');
       if (existing) existing.remove();
@@ -84,9 +84,16 @@
     if (window._smartico && window._smartico.api && window._smartico.api.getRaffles) {
       window._smartico.api.getRaffles().then(function (raffles) {
         if (raffles && raffles.length > 0) {
-          var lottery = raffles.find(r => r.name.includes("3 Oaks"));
-          if (lottery) {
-            renderRaffleInfo(lottery.current_tickets_count || 0);
+        
+          var lotteryGroup = raffles.find(r => r.name.includes("3 Oaks"));
+          
+          if (lotteryGroup && lotteryGroup.draws) {
+           
+            var grandLottery = lotteryGroup.draws.find(d => d.name.includes("Grand"));
+            
+            if (grandLottery) {
+              renderRaffleInfo(grandLottery.my_tickets_count || 0);
+            }
           }
         }
       });
