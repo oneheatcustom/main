@@ -2,36 +2,40 @@
 
   const TARGET_SELECTOR = '[data-id="2301ef1d-59f8-479d-8122-c8bd541e8775"]';
   const WIDGET_ID = 'smartico-custom-widget';
-  const PATH_REGEX = /(^\/[a-z]{2})?\/my-account$/;
 
-  let observer = null;
+  // ✅ Надёжная проверка страницы с языковым префиксом и слешем
+  function isMyAccountPage() {
+    const segments = window.location.pathname
+      .replace(/\/+$/, '') // убираем завершающий слеш
+      .split('/')
+      .filter(Boolean);    // убираем пустые элементы
 
-  function isCorrectPage() {
-    return PATH_REGEX.test(window.location.pathname);
+    // /my-account или /xx/my-account
+    return (
+      (segments.length === 1 && segments[0] === 'my-account') ||
+      (segments.length === 2 && segments[1] === 'my-account')
+    );
   }
 
+  // Ждём _smartico, если он ещё не загружен
   function waitForSmartico(callback) {
-
     if (window._smartico) {
       callback();
       return;
     }
 
-    const smarticoObserver = new MutationObserver(() => {
+    const observer = new MutationObserver(() => {
       if (window._smartico) {
-        smarticoObserver.disconnect();
+        observer.disconnect();
         callback();
       }
     });
 
-    smarticoObserver.observe(document.documentElement, {
-      childList: true,
-      subtree: true
-    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
   }
 
+  // Создаём виджет
   function createWidget() {
-
     if (document.getElementById(WIDGET_ID)) return null;
 
     const button = document.createElement('button');
@@ -42,7 +46,6 @@
       display:flex;
       align-items:center;
       width:calc(100% - 20px);
-      margin:16px 10px;
       padding:10px;
       border:none;
       border-radius:12px;
@@ -70,12 +73,9 @@
       </svg>
     `;
 
-    // CLICK с fallback
+    // CLICK с fallback на _smartico
     button.addEventListener('click', function () {
-
-      waitForSmartico(function () {
-        window._smartico?.dp('dp:gf');
-      });
+      waitForSmartico(() => window._smartico?.dp('dp:gf'));
 
       window.analytics?.push({
         schema: 'iglu:com.psp/widget_platform_click/jsonschema/5-0-0',
@@ -89,15 +89,14 @@
           page_id: 'my_account'
         }
       });
-
     });
 
     return button;
   }
 
+  // Пытаемся вставить виджет
   function tryInsert() {
-
-    if (!isCorrectPage()) return;
+    if (!isMyAccountPage()) return;
 
     const target = document.querySelector(TARGET_SELECTOR);
     if (!target) return;
@@ -120,40 +119,29 @@
     });
   }
 
+  // MutationObserver для SPA
+  let observer = null;
   function startObserver() {
-
     if (observer) observer.disconnect();
-
     observer = new MutationObserver(tryInsert);
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
-
-    tryInsert();
+    observer.observe(document.body, { childList: true, subtree: true });
+    tryInsert(); // попытка сразу
   }
 
+  // SPA navigation hooks
   function handleRouteChange() {
-    if (isCorrectPage()) startObserver();
+    if (isMyAccountPage()) startObserver();
     else observer?.disconnect();
   }
 
   const originalPushState = history.pushState;
   const originalReplaceState = history.replaceState;
 
-  history.pushState = function () {
-    originalPushState.apply(this, arguments);
-    setTimeout(handleRouteChange, 50);
-  };
-
-  history.replaceState = function () {
-    originalReplaceState.apply(this, arguments);
-    setTimeout(handleRouteChange, 50);
-  };
-
+  history.pushState = function () { originalPushState.apply(this, arguments); setTimeout(handleRouteChange, 50); };
+  history.replaceState = function () { originalReplaceState.apply(this, arguments); setTimeout(handleRouteChange, 50); };
   window.addEventListener('popstate', handleRouteChange);
 
+  // initial run
   handleRouteChange();
 
 })();
