@@ -29,7 +29,7 @@
 
   var redditId = getParam('raddit_id') || getCookie('raddit_id');
 
-  if (redditId !== 'a2_ie30vgoc3goy') return;
+  if (redditId !== 'a2_ii8se9vyu30e') return;
 
   // Сохраняем cookie на корневой домен
   setCookie('raddit_id', redditId, 7);
