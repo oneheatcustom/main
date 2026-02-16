@@ -8,7 +8,6 @@
 
     function getPlayerIdFromDataLayer() {
         if (!Array.isArray(window.dataLayer)) return null;
-
         for (let i = window.dataLayer.length - 1; i >= 0; i--) {
             const item = window.dataLayer[i];
             if (item && item.userID != null) return item.userID;
@@ -34,9 +33,7 @@
             localStorage.removeItem('smartico_skin');
             localStorage.removeItem('smartico_control');
 
-            // сбрасываем suspend-состояние
             lastSuspendState = null;
-
             return;
         }
 
@@ -51,7 +48,6 @@
         const path = window.location.pathname
             .replace(/\/+$/, '')
             .toLowerCase();
-
         return /^\/([a-z]{2}(?:-[a-z]{2})?\/)?(deposit|withdraw)$/.test(path);
     }
 
@@ -59,8 +55,6 @@
         if (!window._smartico) return;
 
         const token = localStorage.getItem('token');
-
-        // не вызываем Smartico API для неавторизованных
         if (!token) {
             lastSuspendState = null;
             return;
@@ -68,7 +62,6 @@
 
         const shouldSuspend = isRestrictedPage();
         if (shouldSuspend === lastSuspendState) return;
-
         lastSuspendState = shouldSuspend;
 
         window._smartico.suspendPopups?.(shouldSuspend);
@@ -96,7 +89,6 @@
                 !window._smartico.__skin15Applied
             ) {
                 window._smartico.__skin15Applied = true;
-
                 if (window._smartico.setSkin) {
                     window._smartico.setSkin('v3_growe_india_15');
                     localStorage.setItem('smartico_skin', 'v3_growe_india_15');
@@ -105,7 +97,6 @@
         }
 
         window._smartico.on('props_change', handleProps);
-
         if (window._smartico.getUserProps) {
             const currentProps = window._smartico.getUserProps();
             if (currentProps) handleProps(currentProps);
@@ -113,13 +104,16 @@
     }
 
     function handleUrlChange() {
-        const hash = window.location.hash.slice(1);
-        if (!hash.startsWith('smartico_dl=')) return;
+        const hash = window.location.hash;
+        if (!hash || !hash.startsWith('#smartico_dl=')) return;
+        if (!window._smartico?.dp) return;
 
-        const value = hash.replace('smartico_dl=', '');
-        window._smartico?.dp?.(value);
+        const value = hash.replace('#smartico_dl=', '');
+        if (!value) return;
 
-        window.history.replaceState(
+        window._smartico.dp(value);
+
+        history.replaceState(
             null,
             document.title,
             window.location.pathname + window.location.search
@@ -141,8 +135,10 @@
 
             syncSmarticoUser(true);
             bindSmarticoEvents();
-            handleUrlChange();
             updateSmarticoSuspension();
+
+            // 🔹 Обрабатываем hash только после init
+            setTimeout(handleUrlChange, 0);
 
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({ event: 'smartico_initialized' });
@@ -151,6 +147,7 @@
         document.head.appendChild(script);
     }
 
+    // SPA & hash listeners
     window.addEventListener('hashchange', function () {
         handleUrlChange();
         updateSmarticoSuspension();
@@ -170,8 +167,14 @@
         };
     });
 
-    window.addEventListener('pushState', updateSmarticoSuspension);
-    window.addEventListener('replaceState', updateSmarticoSuspension);
+    window.addEventListener('pushState', function () {
+        handleUrlChange();
+        updateSmarticoSuspension();
+    });
+    window.addEventListener('replaceState', function () {
+        handleUrlChange();
+        updateSmarticoSuspension();
+    });
 
     window.addEventListener('storage', function (event) {
         if (event.key === 'token') {
