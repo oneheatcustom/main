@@ -45,9 +45,7 @@
     }
 
     function isRestrictedPage() {
-        const path = window.location.pathname
-            .replace(/\/+$/, '')
-            .toLowerCase();
+        const path = window.location.pathname.replace(/\/+$/, '').toLowerCase();
         return /^\/([a-z]{2}(?:-[a-z]{2})?\/)?(deposit|withdraw)$/.test(path);
     }
 
@@ -72,31 +70,31 @@
     function bindSmarticoEvents() {
         if (!window._smartico?.on) return;
         if (window._smartico.__eventsBound) return;
-
         window._smartico.__eventsBound = true;
+
+        function applySkin15() {
+            if (window._smartico && typeof window._smartico.setSkin === 'function') {
+                window._smartico.setSkin('v3_growe_india_15');
+                localStorage.setItem('smartico_skin', 'v3_growe_india_15');
+                window._smartico.__skin15Applied = true;
+                console.log('[Smartico] Skin 15 applied');
+            } else {
+                setTimeout(applySkin15, 100);
+            }
+        }
 
         function handleProps(props) {
             if (props.ach_gamification_in_control_group !== undefined) {
-                localStorage.setItem(
-                    'smartico_control',
-                    String(props.ach_gamification_in_control_group)
-                );
+                localStorage.setItem('smartico_control', String(props.ach_gamification_in_control_group));
             }
 
-            if (
-                props.ach_level_current != null &&
-                Number(props.ach_level_current) === 15 &&
-                !window._smartico.__skin15Applied
-            ) {
-                window._smartico.__skin15Applied = true;
-                if (window._smartico.setSkin) {
-                    window._smartico.setSkin('v3_growe_india_15');
-                    localStorage.setItem('smartico_skin', 'v3_growe_india_15');
-                }
+            if (Number(props.ach_level_current) === 15 && !window._smartico.__skin15Applied) {
+                applySkin15();
             }
         }
 
         window._smartico.on('props_change', handleProps);
+
         if (window._smartico.getUserProps) {
             const currentProps = window._smartico.getUserProps();
             if (currentProps) handleProps(currentProps);
