@@ -33,6 +33,10 @@
 
             localStorage.removeItem('smartico_skin');
             localStorage.removeItem('smartico_control');
+
+            // сбрасываем suspend-состояние
+            lastSuspendState = null;
+
             return;
         }
 
@@ -53,6 +57,14 @@
 
     function updateSmarticoSuspension() {
         if (!window._smartico) return;
+
+        const token = localStorage.getItem('token');
+
+        // не вызываем Smartico API для неавторизованных
+        if (!token) {
+            lastSuspendState = null;
+            return;
+        }
 
         const shouldSuspend = isRestrictedPage();
         if (shouldSuspend === lastSuspendState) return;
@@ -164,6 +176,7 @@
     window.addEventListener('storage', function (event) {
         if (event.key === 'token') {
             syncSmarticoUser(true);
+            updateSmarticoSuspension();
         }
     });
 
@@ -173,12 +186,18 @@
 
         localStorage.setItem = function (key, value) {
             originalSetItem.apply(this, arguments);
-            if (key === 'token') syncSmarticoUser(true);
+            if (key === 'token') {
+                syncSmarticoUser(true);
+                updateSmarticoSuspension();
+            }
         };
 
         localStorage.removeItem = function (key) {
             originalRemoveItem.apply(this, arguments);
-            if (key === 'token') syncSmarticoUser(true);
+            if (key === 'token') {
+                syncSmarticoUser(true);
+                updateSmarticoSuspension();
+            }
         };
     })();
 
