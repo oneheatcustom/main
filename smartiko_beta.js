@@ -4,7 +4,7 @@
     const BRAND_KEY = '16b5e781';
 
     let lastKnownToken = null;
-    let smarticoControl = null; // props.ach_gamification_in_control_group
+    let smarticoControl = null;
     let widgetObserver = null;
 
     /* =========================
@@ -29,10 +29,6 @@
         return !!localStorage.getItem('token');
     }
 
-    /* =========================
-       WIDGET VISIBILITY LOGIC
-    ========================== */
-
     function shouldShowWidget() {
         return isLoggedIn() && smarticoControl === false;
     }
@@ -40,7 +36,6 @@
     function updateWidgetVisibility() {
         const widget = document.getElementById('smartico-custom-widget');
         if (!widget) return;
-
         widget.style.display = shouldShowWidget() ? 'flex' : 'none';
     }
 
@@ -62,7 +57,6 @@
             localStorage.removeItem('smartico_control');
 
             console.log('[Smartico] User logged out');
-
             updateWidgetVisibility();
             return;
         }
@@ -76,6 +70,31 @@
 
         updateWidgetVisibility();
     }
+
+    /* =========================
+       TOKEN WATCHERS (NO POLLING)
+    ========================== */
+
+    // Между вкладками
+    window.addEventListener('storage', function (e) {
+        if (e.key === 'token') syncSmarticoUser(true);
+    });
+
+    // Перехват setItem/removeItem в текущей вкладке
+    (function () {
+        const originalSetItem = localStorage.setItem;
+        const originalRemoveItem = localStorage.removeItem;
+
+        localStorage.setItem = function (key, value) {
+            originalSetItem.apply(this, arguments);
+            if (key === 'token') syncSmarticoUser(true);
+        };
+
+        localStorage.removeItem = function (key) {
+            originalRemoveItem.apply(this, arguments);
+            if (key === 'token') syncSmarticoUser(true);
+        };
+    })();
 
     /* =========================
        SMARTICO INIT
@@ -96,7 +115,6 @@
             }
 
             window._smartico.init(PROJECT_KEY, { brand_key: BRAND_KEY });
-
             syncSmarticoUser(true);
 
             window.dataLayer = window.dataLayer || [];
@@ -158,7 +176,7 @@
     }
 
     /* =========================
-       SMARTICO HASH TRIGGER
+       HASH TRIGGER
     ========================== */
 
     function handleUrlChange() {
@@ -166,41 +184,17 @@
         if (!hash.startsWith('smartico_dl=')) return;
 
         const value = hash.replace('smartico_dl=', '');
+        window._smartico?.dp?.(value);
 
-        if (value && window._smartico?.dp) {
-            window._smartico.dp(value);
-            window.history.replaceState(
-                null,
-                document.title,
-                window.location.pathname + window.location.search
-            );
-        }
+        window.history.replaceState(
+            null,
+            document.title,
+            window.location.pathname + window.location.search
+        );
     }
 
     window.addEventListener('hashchange', handleUrlChange);
     window.addEventListener('popstate', handleUrlChange);
-
-    ['pushState', 'replaceState'].forEach(method => {
-        const original = history[method];
-        history[method] = function () {
-            const result = original.apply(this, arguments);
-            window.dispatchEvent(new Event(method));
-            return result;
-        };
-    });
-
-    window.addEventListener('pushState', handleUrlChange);
-    window.addEventListener('replaceState', handleUrlChange);
-
-    /* =========================
-       TOKEN WATCHERS
-    ========================== */
-
-    window.addEventListener('storage', e => {
-        if (e.key === 'token') syncSmarticoUser(true);
-    });
-
-    setInterval(syncSmarticoUser, 1000);
 
     /* =========================
        SMARTICO CUSTOM WIDGET
@@ -299,7 +293,6 @@
         };
 
         window.addEventListener('popstate', handleRouteChange);
-
         handleRouteChange();
     }
 
