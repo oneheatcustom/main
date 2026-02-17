@@ -5,8 +5,6 @@
 
     const SKIN_NAME = 'v3_grove_india_15_new';
     const SEGMENT_ID = 35936;
-    const MIN_LEVEL = 15;
-    const MAX_LEVEL = 30;
 
     let lastKnownToken = null;
     let lastSuspendState = null;
@@ -32,31 +30,6 @@
         return /^\/([a-z]{2}(?:-[a-z]{2})?\/)?(deposit|withdraw)$/.test(path);
     }
 
-    function whenSmarticoApiReady(cb) {
-        let attempts = 0;
-        const maxAttempts = 50;
-
-        (function wait() {
-            attempts++;
-
-            if (
-                window._smartico &&
-                window._smartico.api &&
-                typeof window._smartico.api.checkSegmentMatch === 'function' &&
-                typeof window._smartico.setSkin === 'function'
-            ) {
-                cb();
-                return;
-            }
-
-            if (attempts < maxAttempts) {
-                setTimeout(wait, 100);
-            } else {
-                console.warn('[Smartico] API not ready for skin');
-            }
-        })();
-    }
-
     /* ---------------- user sync ---------------- */
 
     function syncSmarticoUser(force) {
@@ -69,7 +42,7 @@
             window._smartico_user_id = null;
             window._smartico?.setUserId?.(null);
 
-            localStorage.removeItem('smartico_skin');
+            localStorage.removeItem('smartico_skin_v3');
             window._smartico.__skinApplied = false;
             lastSuspendState = null;
             return;
@@ -108,40 +81,37 @@
         if (window._smartico.__skinApplied) return;
 
         window._smartico.api.checkSegmentMatch(SEGMENT_ID).then(function (inSegment) {
-            if (!inSegment) return;
-
-            const props = window._smartico.getUserProps
-                ? window._smartico.getUserProps()
-                : null;
-
-            const level = Number(props && props.ach_level_current);
-
-            if (level >= MIN_LEVEL && level <= MAX_LEVEL) {
+            if (inSegment === true) {
                 window._smartico.setSkin(SKIN_NAME);
-                localStorage.setItem('smartico_skin', SKIN_NAME);
+                localStorage.setItem('smartico_skin_v3', true);
                 window._smartico.__skinApplied = true;
 
-                console.log('[Smartico] Skin applied', {
-                    skin: SKIN_NAME,
-                    segment: SEGMENT_ID,
-                    level: level
-                });
+                console.log('[Smartico] Skin applied via segment', SEGMENT_ID);
             }
         });
     }
 
     function initSkinLogic() {
-        whenSmarticoApiReady(function () {
-            applySkinViaSegment();
+        let attempts = 0;
+        const maxAttempts = 50;
 
-            // fallback: если props прилетят позже
-            window._smartico.on?.('props_change', function (props) {
-                const level = Number(props && props.ach_level_current);
-                if (level >= MIN_LEVEL && level <= MAX_LEVEL) {
-                    applySkinViaSegment();
-                }
-            });
-        });
+        (function wait() {
+            attempts++;
+
+            if (
+                window._smartico &&
+                window._smartico.api &&
+                typeof window._smartico.api.checkSegmentMatch === 'function' &&
+                typeof window._smartico.setSkin === 'function'
+            ) {
+                applySkinViaSegment();
+                return;
+            }
+
+            if (attempts < maxAttempts) {
+                setTimeout(wait, 100);
+            }
+        })();
     }
 
     /* ---------------- deep link ---------------- */
@@ -180,7 +150,7 @@
 
             syncSmarticoUser(true);
             updateSmarticoSuspension();
-            initSkinLogic();
+            initSkinLogic(); // 🔹 рабочий skin через сегмент
 
             setTimeout(handleUrlChange, 0);
 
