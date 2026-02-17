@@ -43,9 +43,11 @@
             window._smartico?.setUserId?.(null);
 
             // очищаем только при отсутствии токена
-            localStorage.removeItem('smartico_skin');
+            localStorage.removeItem('smartico_skin_v3');
             localStorage.removeItem('smartico_control');
-            window._smartico.__skinApplied = false;
+
+            if (window._smartico) window._smartico.__skinApplied = false;
+
             lastSuspendState = null;
             return;
         }
@@ -83,13 +85,13 @@
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        if (window._smartico.__skinApplied) return; // уже применён
+        if (window._smartico?.__skinApplied) return; // уже применён
 
         window._smartico.api.checkSegmentMatch(SEGMENT_ID).then(function (inSegment) {
             if (inSegment === true) {
                 window._smartico.setSkin(SKIN_NAME);
-                localStorage.setItem('smartico_skin', true);
-                window._smartico.__skinApplied = true;
+                localStorage.setItem('smartico_skin_v3', true);
+                if (window._smartico) window._smartico.__skinApplied = true;
                 console.log('[Smartico] Skin applied via segment', SEGMENT_ID);
             }
         });
@@ -128,7 +130,7 @@
         if (currentControl !== null) return; // уже есть значение, не пересоздаём
 
         try {
-            const profile = window._smartico.api.getUserProfile();
+            const profile = window._smartico?.api.getUserProfile?.();
             if (profile && profile.ach_gamification_in_control_group !== undefined) {
                 localStorage.setItem(
                     'smartico_control',
