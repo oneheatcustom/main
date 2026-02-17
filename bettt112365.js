@@ -42,7 +42,7 @@
             window._smartico_user_id = null;
             window._smartico?.setUserId?.(null);
 
-            localStorage.removeItem('smartico_skin_v3');
+            localStorage.removeItem('smartico_skin');
             localStorage.removeItem('smartico_control');
             window._smartico.__skinApplied = false;
             lastSuspendState = null;
@@ -80,14 +80,14 @@
 
     function applySkinViaSegment() {
         const token = localStorage.getItem('token');
-        if (!token) return; // только авторизованный
+        if (!token) return;
 
         if (window._smartico.__skinApplied) return;
 
         window._smartico.api.checkSegmentMatch(SEGMENT_ID).then(function (inSegment) {
             if (inSegment === true) {
                 window._smartico.setSkin(SKIN_NAME);
-                localStorage.setItem('smartico_skin_v3', true);
+                localStorage.setItem('smartico_skin', true);
                 window._smartico.__skinApplied = true;
                 console.log('[Smartico] Skin applied via segment', SEGMENT_ID);
             }
@@ -121,7 +121,7 @@
 
     function syncSmarticoControl() {
         const token = localStorage.getItem('token');
-        if (!token) return; // только авторизованный
+        if (!token) return;
 
         try {
             const profile = window._smartico.api.getUserProfile();
@@ -202,8 +202,19 @@
             syncSmarticoUser(true);
             updateSmarticoSuspension();
 
-            initSkinLogic();      // skin через сегмент
-            initSmarticoFlags();   // control flag через API
+            // 🔹 SPA-safe и надежный вызов skin + control
+            function triggerSmarticoFlags() {
+                initSkinLogic();
+                initSmarticoFlags();
+            }
+
+            // сразу после init
+            triggerSmarticoFlags();
+
+            // SPA listeners
+            ['hashchange', 'popstate', 'pushState', 'replaceState'].forEach(event => {
+                window.addEventListener(event, triggerSmarticoFlags);
+            });
 
             setTimeout(handleUrlChange, 0);
 
@@ -214,17 +225,7 @@
         document.head.appendChild(script);
     }
 
-    /* ---------------- SPA listeners ---------------- */
-
-    window.addEventListener('hashchange', function () {
-        handleUrlChange();
-        updateSmarticoSuspension();
-    });
-
-    window.addEventListener('popstate', function () {
-        handleUrlChange();
-        updateSmarticoSuspension();
-    });
+    /* ---------------- SPA helpers for push/replace ---------------- */
 
     ['pushState', 'replaceState'].forEach(function (method) {
         const original = history[method];
@@ -235,14 +236,7 @@
         };
     });
 
-    window.addEventListener('pushState', function () {
-        handleUrlChange();
-        updateSmarticoSuspension();
-    });
-    window.addEventListener('replaceState', function () {
-        handleUrlChange();
-        updateSmarticoSuspension();
-    });
+    /* ---------------- storage listener ---------------- */
 
     window.addEventListener('storage', function (event) {
         if (event.key === 'token') {
