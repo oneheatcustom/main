@@ -42,7 +42,7 @@
             window._smartico_user_id = null;
             window._smartico?.setUserId?.(null);
 
-            localStorage.removeItem('smartico_skin');
+            localStorage.removeItem('smartico_skin_v3');
             localStorage.removeItem('smartico_control');
             window._smartico.__skinApplied = false;
             lastSuspendState = null;
@@ -87,7 +87,7 @@
         window._smartico.api.checkSegmentMatch(SEGMENT_ID).then(function (inSegment) {
             if (inSegment === true) {
                 window._smartico.setSkin(SKIN_NAME);
-                localStorage.setItem('smartico_skin', true);
+                localStorage.setItem('smartico_skin_v3', true);
                 window._smartico.__skinApplied = true;
                 console.log('[Smartico] Skin applied via segment', SEGMENT_ID);
             }
@@ -202,10 +202,11 @@
             syncSmarticoUser(true);
             updateSmarticoSuspension();
 
-            // 🔹 SPA-safe и надежный вызов skin + control
+            // 🔹 SPA-safe: skin + control + deep link
             function triggerSmarticoFlags() {
                 initSkinLogic();
                 initSmarticoFlags();
+                handleUrlChange();
             }
 
             // сразу после init
@@ -215,8 +216,6 @@
             ['hashchange', 'popstate', 'pushState', 'replaceState'].forEach(event => {
                 window.addEventListener(event, triggerSmarticoFlags);
             });
-
-            setTimeout(handleUrlChange, 0);
 
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({ event: 'smartico_initialized' });
