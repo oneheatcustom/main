@@ -42,7 +42,8 @@
             window._smartico_user_id = null;
             window._smartico?.setUserId?.(null);
 
-            localStorage.removeItem('smartico_skin_v3');
+            // очищаем только при отсутствии токена
+            localStorage.removeItem('smartico_skin');
             localStorage.removeItem('smartico_control');
             window._smartico.__skinApplied = false;
             lastSuspendState = null;
@@ -82,12 +83,12 @@
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        if (window._smartico.__skinApplied) return;
+        if (window._smartico.__skinApplied) return; // уже применён
 
         window._smartico.api.checkSegmentMatch(SEGMENT_ID).then(function (inSegment) {
             if (inSegment === true) {
                 window._smartico.setSkin(SKIN_NAME);
-                localStorage.setItem('smartico_skin_v3', true);
+                localStorage.setItem('smartico_skin', true);
                 window._smartico.__skinApplied = true;
                 console.log('[Smartico] Skin applied via segment', SEGMENT_ID);
             }
@@ -122,6 +123,9 @@
     function syncSmarticoControl() {
         const token = localStorage.getItem('token');
         if (!token) return;
+
+        const currentControl = localStorage.getItem('smartico_control');
+        if (currentControl !== null) return; // уже есть значение, не пересоздаём
 
         try {
             const profile = window._smartico.api.getUserProfile();
@@ -204,6 +208,8 @@
 
             // 🔹 SPA-safe: skin + control + deep link
             function triggerSmarticoFlags() {
+                const token = localStorage.getItem('token');
+                if (!token) return; // оптимизация: не запускаем для неавторизованного
                 initSkinLogic();
                 initSmarticoFlags();
                 handleUrlChange();
