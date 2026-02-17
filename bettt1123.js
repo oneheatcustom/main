@@ -79,10 +79,10 @@
     /* ---------------- skin logic ---------------- */
 
     function applySkinViaSegment() {
-        if (window._smartico.__skinApplied) return;
-
         const token = localStorage.getItem('token');
-        if (!token) return; // только для авторизованных
+        if (!token) return; // только авторизованный
+
+        if (window._smartico.__skinApplied) return;
 
         window._smartico.api.checkSegmentMatch(SEGMENT_ID).then(function (inSegment) {
             if (inSegment === true) {
@@ -121,9 +121,7 @@
 
     function syncSmarticoControl() {
         const token = localStorage.getItem('token');
-        if (!token) return; // только для авторизованных
-
-        if (!window._smartico?.api?.getUserProfile) return;
+        if (!token) return; // только авторизованный
 
         try {
             const profile = window._smartico.api.getUserProfile();
@@ -145,6 +143,12 @@
 
         (function wait() {
             attempts++;
+
+            const token = localStorage.getItem('token');
+            if (!token) {
+                if (attempts < maxAttempts) setTimeout(wait, 100);
+                return;
+            }
 
             if (
                 window._smartico &&
@@ -198,8 +202,8 @@
             syncSmarticoUser(true);
             updateSmarticoSuspension();
 
-            initSkinLogic();     // skin через сегмент
-            initSmarticoFlags();  // control flag через API
+            initSkinLogic();      // skin через сегмент
+            initSmarticoFlags();   // control flag через API
 
             setTimeout(handleUrlChange, 0);
 
