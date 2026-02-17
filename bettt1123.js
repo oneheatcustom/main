@@ -43,6 +43,7 @@
             window._smartico?.setUserId?.(null);
 
             localStorage.removeItem('smartico_skin_v3');
+            localStorage.removeItem('smartico_control');
             window._smartico.__skinApplied = false;
             lastSuspendState = null;
             return;
@@ -75,17 +76,19 @@
         window._smartico.suspendMiniGames?.(shouldSuspend);
     }
 
-    /* ---------------- skin logic (SEGMENT) ---------------- */
+    /* ---------------- skin logic ---------------- */
 
     function applySkinViaSegment() {
         if (window._smartico.__skinApplied) return;
+
+        const token = localStorage.getItem('token');
+        if (!token) return; // только для авторизованных
 
         window._smartico.api.checkSegmentMatch(SEGMENT_ID).then(function (inSegment) {
             if (inSegment === true) {
                 window._smartico.setSkin(SKIN_NAME);
                 localStorage.setItem('smartico_skin_v3', true);
                 window._smartico.__skinApplied = true;
-
                 console.log('[Smartico] Skin applied via segment', SEGMENT_ID);
             }
         });
@@ -105,6 +108,50 @@
                 typeof window._smartico.setSkin === 'function'
             ) {
                 applySkinViaSegment();
+                return;
+            }
+
+            if (attempts < maxAttempts) {
+                setTimeout(wait, 100);
+            }
+        })();
+    }
+
+    /* ---------------- control flag logic ---------------- */
+
+    function syncSmarticoControl() {
+        const token = localStorage.getItem('token');
+        if (!token) return; // только для авторизованных
+
+        if (!window._smartico?.api?.getUserProfile) return;
+
+        try {
+            const profile = window._smartico.api.getUserProfile();
+            if (profile && profile.ach_gamification_in_control_group !== undefined) {
+                localStorage.setItem(
+                    'smartico_control',
+                    String(profile.ach_gamification_in_control_group)
+                );
+                console.log('[Smartico] Control flag saved:', profile.ach_gamification_in_control_group);
+            }
+        } catch (e) {
+            console.warn('[Smartico] Failed to get control flag', e);
+        }
+    }
+
+    function initSmarticoFlags() {
+        let attempts = 0;
+        const maxAttempts = 50;
+
+        (function wait() {
+            attempts++;
+
+            if (
+                window._smartico &&
+                window._smartico.api &&
+                typeof window._smartico.api.getUserProfile === 'function'
+            ) {
+                syncSmarticoControl();
                 return;
             }
 
@@ -150,7 +197,9 @@
 
             syncSmarticoUser(true);
             updateSmarticoSuspension();
-            initSkinLogic(); // 🔹 рабочий skin через сегмент
+
+            initSkinLogic();     // skin через сегмент
+            initSmarticoFlags();  // control flag через API
 
             setTimeout(handleUrlChange, 0);
 
