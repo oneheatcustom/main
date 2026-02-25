@@ -60,27 +60,32 @@
 
             pushDL('smartico_initialized');
 
+            // сразу после init проверяем токен и userId
             const token = localStorage.getItem('token');
             const userId = getPlayerIdFromDataLayer();
             if (token && userId) {
-                smarticoLogin(userId);
+                _userId = userId;
+                window._smartico_user_id = _userId;
+                smarticoLogin();
             }
         };
 
         document.head.appendChild(script);
     }
 
-    function smarticoLogin(userId) {
-        if (!window._smartico || !userId) return;
-        if (_userId === userId) return; // уже залогинен
-        _userId = userId;
-        window._smartico_user_id = userId;
+    function smarticoLogin() {
+        if (!window._smartico || !_userId) return;
+        // login только если токен есть
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        window._smartico_user_id = _userId;
         window._smartico.login();
         applySkinSegment();
     }
 
     function smarticoLogout() {
-        if (!window._smartico || logoutInProgress) return;
+        if (!window._smartico || !_userId || logoutInProgress) return;
         logoutInProgress = true;
         window._smartico.logout();
     }
@@ -100,12 +105,12 @@
     }
 
     function updateSmarticoSuspension() {
-        if (!window._smartico) return;
         const token = localStorage.getItem('token');
-        if (!token) {
+        if (!window._smartico || !token) {
             lastSuspendState = null;
             return;
         }
+
         const shouldSuspend = isRestrictedPage();
         if (shouldSuspend === lastSuspendState) return;
         lastSuspendState = shouldSuspend;
@@ -116,15 +121,14 @@
     }
 
     function handleUrlChange() {
+        if (!window._smartico || !window._smartico.dp) return;
         const hash = window.location.hash;
         if (!hash || !hash.startsWith('#smartico_dl=')) return;
-        if (!window._smartico?.dp) return;
 
         const value = hash.replace('#smartico_dl=', '');
         if (!value) return;
 
         window._smartico.dp(value);
-
         history.replaceState(
             null,
             document.title,
@@ -154,7 +158,8 @@
             const token = localStorage.getItem('token');
             const userId = getPlayerIdFromDataLayer();
             if (token && userId) {
-                smarticoLogin(userId);
+                _userId = userId;
+                smarticoLogin();
             } else {
                 smarticoLogout();
             }
@@ -172,7 +177,8 @@
                 const token = localStorage.getItem('token');
                 const userId = getPlayerIdFromDataLayer();
                 if (token && userId) {
-                    smarticoLogin(userId);
+                    _userId = userId;
+                    smarticoLogin();
                 } else {
                     smarticoLogout();
                 }
