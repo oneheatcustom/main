@@ -7,8 +7,7 @@
 
     let _userId = null;
     let lastSuspendState = null;
-
-    /* ---------------- helpers ---------------- */
+    let logoutInProgress = false;
 
     function getPlayerIdFromDataLayer() {
         if (!Array.isArray(window.dataLayer)) return null;
@@ -34,10 +33,8 @@
         window.dataLayer.push(Object.assign({ event }, data || {}));
     }
 
-    /* ---------------- init ---------------- */
-
     function initSmartico() {
-        if (window._smartico) return; // только один раз
+        if (window._smartico) return;
 
         const script = document.createElement('script');
         script.src = SMARTICO_SRC;
@@ -46,16 +43,15 @@
         script.onload = function () {
             window._smartico.init(PROJECT_KEY, { brand_key: BRAND_KEY });
 
-            // SPA login callback
             window._smartico.on('login', () => {
-                console.log('[Smartico] SPA login callback');
+                console.log('[Smartico] login callback');
                 applySkinSegment();
                 pushDL('smartico_login', { userId: _userId });
             });
 
-            // SPA logout callback
             window._smartico.on('logout', () => {
-                console.log('[Smartico] SPA logout callback');
+                console.log('[Smartico] logout callback');
+                logoutInProgress = false;
                 _userId = null;
                 window._smartico_user_id = null;
                 localStorage.removeItem('smartico_skin_v3');
@@ -64,39 +60,30 @@
 
             pushDL('smartico_initialized');
 
-            // сразу после init проверяем авторизацию
             const token = localStorage.getItem('token');
             const userId = getPlayerIdFromDataLayer();
             if (token && userId) {
-                smarticoIdentify(userId);
-                smarticoLogin();
+                smarticoLogin(userId);
             }
         };
 
         document.head.appendChild(script);
     }
 
-    /* ---------------- SPA auth functions ---------------- */
-
-    function smarticoIdentify(userId) {
+    function smarticoLogin(userId) {
         if (!window._smartico || !userId) return;
+        if (_userId === userId) return; // уже залогинен
         _userId = userId;
         window._smartico_user_id = userId;
-        window._smartico.identify(userId);
-    }
-
-    function smarticoLogin() {
-        if (!window._smartico || !_userId) return;
         window._smartico.login();
         applySkinSegment();
     }
 
     function smarticoLogout() {
-        if (!window._smartico) return;
+        if (!window._smartico || logoutInProgress) return;
+        logoutInProgress = true;
         window._smartico.logout();
     }
-
-    /* ---------------- skin ---------------- */
 
     function applySkinSegment() {
         const token = localStorage.getItem('token');
@@ -112,8 +99,6 @@
         });
     }
 
-    /* ---------------- suspension ---------------- */
-
     function updateSmarticoSuspension() {
         if (!window._smartico) return;
         const token = localStorage.getItem('token');
@@ -121,7 +106,6 @@
             lastSuspendState = null;
             return;
         }
-
         const shouldSuspend = isRestrictedPage();
         if (shouldSuspend === lastSuspendState) return;
         lastSuspendState = shouldSuspend;
@@ -130,8 +114,6 @@
         window._smartico.suspendInbox?.(shouldSuspend);
         window._smartico.suspendMiniGames?.(shouldSuspend);
     }
-
-    /* ---------------- deep link ---------------- */
 
     function handleUrlChange() {
         const hash = window.location.hash;
@@ -151,7 +133,6 @@
     }
 
     /* ---------------- SPA listeners ---------------- */
-
     ['hashchange', 'popstate', 'pushState', 'replaceState'].forEach(event => {
         window.addEventListener(event, () => {
             handleUrlChange();
@@ -168,15 +149,12 @@
         };
     });
 
-    /* ---------------- storage listener ---------------- */
-
     window.addEventListener('storage', e => {
         if (e.key === 'token') {
             const token = localStorage.getItem('token');
             const userId = getPlayerIdFromDataLayer();
             if (token && userId) {
-                smarticoIdentify(userId);
-                smarticoLogin();
+                smarticoLogin(userId);
             } else {
                 smarticoLogout();
             }
@@ -194,8 +172,7 @@
                 const token = localStorage.getItem('token');
                 const userId = getPlayerIdFromDataLayer();
                 if (token && userId) {
-                    smarticoIdentify(userId);
-                    smarticoLogin();
+                    smarticoLogin(userId);
                 } else {
                     smarticoLogout();
                 }
@@ -213,7 +190,6 @@
     })();
 
     /* ---------------- bootstrap ---------------- */
-
     setLanguage();
     initSmartico();
 })();
