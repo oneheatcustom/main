@@ -12,15 +12,6 @@
     /* ---------------- helpers ---------------- */
     const sleep = ms => new Promise(res => setTimeout(res, ms));
 
-    function getLatestUserIdFromDataLayer() {
-        if (!Array.isArray(window.dataLayer)) return null;
-        for (let i = window.dataLayer.length - 1; i >= 0; i--) {
-            const item = window.dataLayer[i];
-            if (item && (item.userID != null || item.userId != null)) return item.userID || item.userId;
-        }
-        return null;
-    }
-
     function setLanguage() {
         window._smartico_language = (document.documentElement.lang || 'EN').toUpperCase();
     }
@@ -97,10 +88,8 @@
     }
 
     /* ---------------- LOGIN / LOGOUT ---------------- */
-    async function loginUser() {
+    async function loginUser(userId) {
         if (!smarticoReady) await initSmartico();
-
-        const userId = getLatestUserIdFromDataLayer();
         if (!userId) return;
 
         window._smartico_user_id = userId;
@@ -133,11 +122,35 @@
     async function syncLoginState() {
         const token = localStorage.getItem('token');
         if (token) {
-            await loginUser();
+            const userId = getLatestUserIdFromDataLayer();
+            await loginUser(userId);
         } else {
             await logoutUser();
         }
     }
+
+    /* ---------------- DataLayer override для SPA ---------------- */
+    function getLatestUserIdFromDataLayer() {
+        if (!Array.isArray(window.dataLayer)) return null;
+        for (let i = window.dataLayer.length - 1; i >= 0; i--) {
+            const item = window.dataLayer[i];
+            if (item && (item.userID != null || item.userId != null)) return item.userID || item.userId;
+        }
+        return null;
+    }
+
+    (function overrideDataLayerPush() {
+        if (!window.dataLayer) window.dataLayer = [];
+        const originalPush = window.dataLayer.push.bind(window.dataLayer);
+
+        window.dataLayer.push = function(obj) {
+            if (obj?.userID || obj?.userId) {
+                const newUserId = obj.userID || obj.userId;
+                loginUser(newUserId); // SPA-safe, сразу postLoginSetup
+            }
+            return originalPush(obj);
+        };
+    })();
 
     /* ---------------- SPA / Deep link ---------------- */
     function handleUrlChange() {
@@ -158,10 +171,7 @@
     });
 
     ['hashchange', 'popstate', 'pushState', 'replaceState'].forEach(e => {
-        window.addEventListener(e, () => {
-            handleUrlChange();
-            loginUser(); // SPA-safe
-        });
+        window.addEventListener(e, () => handleUrlChange());
     });
 
     /* ---------------- TOKEN WATCH ---------------- */
