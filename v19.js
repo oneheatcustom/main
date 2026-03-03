@@ -8,6 +8,8 @@
 
     let smarticoReady = false;
     let lastSuspendState = null;
+    let lastUserId = null;
+    let throttleTimer = null;
 
     /* ---------------- helpers ---------------- */
     const sleep = ms => new Promise(res => setTimeout(res, ms));
@@ -24,7 +26,10 @@
     /* ---------------- INIT ---------------- */
     function initSmartico() {
         return new Promise(resolve => {
-            if (window._smartico) return resolve();
+            if (window._smartico) {
+                smarticoReady = true;
+                return resolve();
+            }
             const script = document.createElement('script');
             script.src = SMARTICO_SRC;
             script.async = true;
@@ -43,7 +48,7 @@
     async function postLoginSetup(userId) {
         if (!userId || !window._smartico) return;
 
-        // 1️⃣ Skin via segment
+        // Skin via segment
         if (!window._smartico.__skinApplied) {
             try {
                 const inSegment = await window._smartico.api.checkSegmentMatch(SEGMENT_ID);
@@ -58,7 +63,7 @@
             }
         }
 
-        // 2️⃣ Control flag with retry
+        // Control flag with retry
         if (!localStorage.getItem('smartico_control')) {
             let profile = null;
             for (let i = 0; i < 20; i++) {
@@ -77,7 +82,7 @@
             } else console.warn('[Smartico] Control group not available after retries');
         }
 
-        // 3️⃣ Suspension
+        // Suspension
         const shouldSuspend = isRestrictedPage();
         if (shouldSuspend !== lastSuspendState) {
             lastSuspendState = shouldSuspend;
@@ -89,47 +94,47 @@
 
     /* ---------------- LOGIN / LOGOUT ---------------- */
     async function loginUser(userId) {
+        if (!userId || userId === lastUserId) return; // throttle same ID
+        lastUserId = userId;
+
         if (!smarticoReady) await initSmartico();
-        if (!userId) return;
 
         window._smartico_user_id = userId;
         window._smartico?.setUserId?.(userId);
 
         await postLoginSetup(userId);
 
-        window.dataLayer.push({ event: 'smartico_login', userId });
         console.log('[Smartico] logged in:', userId);
     }
 
     async function logoutUser() {
         if (!smarticoReady) await initSmartico();
 
-        try {
-            window._smartico_user_id = null;
-        } catch (e) {
-            console.warn('[Smartico] Failed to reset user_id', e);
-        }
+        window._smartico_user_id = null;
+        lastUserId = null;
 
         localStorage.removeItem('smartico_skin_v3');
         localStorage.removeItem('smartico_control');
         lastSuspendState = null;
 
-        window.dataLayer.push({ event: 'smartico_logout' });
         console.log('[Smartico] logged out');
     }
 
     /* ---------------- SYNC ---------------- */
-    async function syncLoginState() {
-        const token = localStorage.getItem('token');
-        if (token) {
+    function syncLoginState() {
+        if (throttleTimer) clearTimeout(throttleTimer);
+        throttleTimer = setTimeout(async () => {
+            const token = localStorage.getItem('token');
             const userId = getLatestUserIdFromDataLayer();
-            await loginUser(userId);
-        } else {
-            await logoutUser();
-        }
+            if (token && userId) {
+                await loginUser(userId);
+            } else {
+                await logoutUser();
+            }
+        }, 100); // throttle 100ms
     }
 
-    /* ---------------- DataLayer override для SPA ---------------- */
+    /* ---------------- DataLayer SPA override ---------------- */
     function getLatestUserIdFromDataLayer() {
         if (!Array.isArray(window.dataLayer)) return null;
         for (let i = window.dataLayer.length - 1; i >= 0; i--) {
@@ -144,10 +149,7 @@
         const originalPush = window.dataLayer.push.bind(window.dataLayer);
 
         window.dataLayer.push = function(obj) {
-            if (obj?.userID || obj?.userId) {
-                const newUserId = obj.userID || obj.userId;
-                loginUser(newUserId); // SPA-safe, сразу postLoginSetup
-            }
+            if (obj?.userID || obj?.userId) syncLoginState();
             return originalPush(obj);
         };
     })();
