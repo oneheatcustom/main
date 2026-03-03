@@ -27,11 +27,11 @@
     }
 
     function isRestrictedPage() {
-        const path = window.location.pathname.replace(/\/+$/, '').toLowerCase();
+        const path = location.pathname.replace(/\/+$/, '').toLowerCase();
         return /^\/([a-z]{2}(?:-[a-z]{2})?\/)?(deposit|withdraw)$/.test(path);
     }
 
-    /* ---------------- INIT (один раз) ---------------- */
+    /* ---------------- INIT ---------------- */
 
     function initSmartico() {
         if (window._smartico) return;
@@ -41,30 +41,22 @@
         script.async = true;
 
         script.onload = function () {
-            if (!window._smartico?.init) return;
-
             window._smartico.init(PROJECT_KEY, { brand_key: BRAND_KEY });
             smarticoReady = true;
 
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({ event: 'smartico_initialized' });
 
-            // если пользователь уже залогинен
             syncLoginState();
         };
 
         document.head.appendChild(script);
     }
 
-    /* ---------------- LOGIN / LOGOUT ---------------- */
+    /* ---------------- LOGIN LOGIC ---------------- */
 
-    function loginUser() {
+    function loginUserWithId(userId) {
         if (!smarticoReady) return;
-
-        const token = localStorage.getItem('token');
-        if (!token) return;
-
-        const userId = getPlayerIdFromDataLayer();
         if (!userId || userId === currentUserId) return;
 
         currentUserId = userId;
@@ -79,6 +71,32 @@
             event: 'smartico_login',
             userId
         });
+
+        console.log('[Smartico] logged in:', userId);
+    }
+
+    function waitForUserIdAndLogin() {
+        if (!smarticoReady) return;
+        if (!localStorage.getItem('token')) return;
+
+        let attempts = 0;
+        const maxAttempts = 30; // ~3 сек
+
+        (function poll() {
+            attempts++;
+
+            const userId = getPlayerIdFromDataLayer();
+            if (userId) {
+                loginUserWithId(userId);
+                return;
+            }
+
+            if (attempts < maxAttempts) {
+                setTimeout(poll, 100);
+            } else {
+                console.warn('[Smartico] userID not found after login');
+            }
+        })();
     }
 
     function logoutUser() {
@@ -92,15 +110,14 @@
 
         lastSuspendState = null;
 
-        window.dataLayer.push({
-            event: 'smartico_logout'
-        });
+        window.dataLayer.push({ event: 'smartico_logout' });
+        console.log('[Smartico] logged out');
     }
 
     function syncLoginState() {
         const token = localStorage.getItem('token');
         if (token) {
-            loginUser();
+            waitForUserIdAndLogin();
         } else {
             logoutUser();
         }
@@ -112,15 +129,15 @@
         if (!currentUserId) return;
         if (window._smartico.__skinApplied) return;
 
-        if (!window._smartico?.api?.checkSegmentMatch) return;
-
-        window._smartico.api.checkSegmentMatch(SEGMENT_ID).then(match => {
-            if (match === true) {
-                window._smartico.setSkin(SKIN_NAME);
-                window._smartico.__skinApplied = true;
-                localStorage.setItem('smartico_skin_v3', 'true');
-            }
-        });
+        window._smartico.api
+            ?.checkSegmentMatch(SEGMENT_ID)
+            ?.then(match => {
+                if (match === true) {
+                    window._smartico.setSkin(SKIN_NAME);
+                    window._smartico.__skinApplied = true;
+                    localStorage.setItem('smartico_skin_v3', 'true');
+                }
+            });
     }
 
     /* ---------------- SUSPENSION ---------------- */
@@ -138,25 +155,22 @@
         window._smartico.suspendMiniGames?.(shouldSuspend);
     }
 
-    /* ---------------- URL / SPA ---------------- */
+    /* ---------------- SPA ---------------- */
 
     function handleUrlChange() {
         if (!window._smartico?.dp) return;
 
-        const hash = window.location.hash;
-        if (!hash || !hash.startsWith('#smartico_dl=')) return;
+        const hash = location.hash;
+        if (!hash.startsWith('#smartico_dl=')) return;
 
-        const value = hash.replace('#smartico_dl=', '');
-        if (!value) return;
-
-        window._smartico.dp(value);
+        window._smartico.dp(hash.replace('#smartico_dl=', ''));
         history.replaceState(null, document.title, location.pathname + location.search);
     }
 
     ['pushState', 'replaceState'].forEach(method => {
-        const original = history[method];
+        const orig = history[method];
         history[method] = function () {
-            const res = original.apply(this, arguments);
+            const res = orig.apply(this, arguments);
             window.dispatchEvent(new Event(method));
             return res;
         };
