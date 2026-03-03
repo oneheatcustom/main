@@ -23,6 +23,18 @@
         return /^\/([a-z]{2}(?:-[a-z]{2})?\/)?(deposit|withdraw)$/.test(path);
     }
 
+    function getLatestUserIdFromDataLayer() {
+        // Берём **только последний userID** в dataLayer
+        if (!Array.isArray(window.dataLayer)) return null;
+        for (let i = window.dataLayer.length - 1; i >= 0; i--) {
+            const item = window.dataLayer[i];
+            if (item && (item.userID != null || item.userId != null)) {
+                return item.userID || item.userId;
+            }
+        }
+        return null;
+    }
+
     /* ---------------- INIT ---------------- */
     function initSmartico() {
         return new Promise(resolve => {
@@ -94,7 +106,8 @@
 
     /* ---------------- LOGIN / LOGOUT ---------------- */
     async function loginUser(userId) {
-        if (!userId || userId === lastUserId) return; // throttle same ID
+        if (!userId || userId === lastUserId) return; // уже текущий пользователь
+
         lastUserId = userId;
 
         if (!smarticoReady) await initSmartico();
@@ -125,7 +138,7 @@
         if (throttleTimer) clearTimeout(throttleTimer);
         throttleTimer = setTimeout(async () => {
             const token = localStorage.getItem('token');
-            const userId = getLatestUserIdFromDataLayer();
+            const userId = token ? getLatestUserIdFromDataLayer() : null;
             if (token && userId) {
                 await loginUser(userId);
             } else {
@@ -134,20 +147,10 @@
         }, 100); // throttle 100ms
     }
 
-    /* ---------------- DataLayer SPA override ---------------- */
-    function getLatestUserIdFromDataLayer() {
-        if (!Array.isArray(window.dataLayer)) return null;
-        for (let i = window.dataLayer.length - 1; i >= 0; i--) {
-            const item = window.dataLayer[i];
-            if (item && (item.userID != null || item.userId != null)) return item.userID || item.userId;
-        }
-        return null;
-    }
-
+    /* ---------------- DataLayer override ---------------- */
     (function overrideDataLayerPush() {
         if (!window.dataLayer) window.dataLayer = [];
         const originalPush = window.dataLayer.push.bind(window.dataLayer);
-
         window.dataLayer.push = function(obj) {
             if (obj?.userID || obj?.userId) syncLoginState();
             return originalPush(obj);
