@@ -10,19 +10,19 @@
     let lastSuspendState = null;
 
     /* ---------------- helpers ---------------- */
+    const sleep = ms => new Promise(res => setTimeout(res, ms));
+
     function getLatestUserIdFromDataLayer() {
         if (!Array.isArray(window.dataLayer)) return null;
         for (let i = window.dataLayer.length - 1; i >= 0; i--) {
             const item = window.dataLayer[i];
-            if (item && item.userId != null) return item.userId;
-            if (item && item.userID != null) return item.userID; // fallback
+            if (item && (item.userID != null || item.userId != null)) return item.userID || item.userId;
         }
         return null;
     }
 
     function setLanguage() {
-        window._smartico_language =
-            (document.documentElement.lang || 'EN').toUpperCase();
+        window._smartico_language = (document.documentElement.lang || 'EN').toUpperCase();
     }
 
     function isRestrictedPage() {
@@ -32,70 +32,61 @@
 
     /* ---------------- INIT ---------------- */
     function initSmartico() {
-        if (window._smartico) return;
-
-        const script = document.createElement('script');
-        script.src = SMARTICO_SRC;
-        script.async = true;
-
-        script.onload = function () {
-            window._smartico.init(PROJECT_KEY, { brand_key: BRAND_KEY });
-            smarticoReady = true;
-
-            window.dataLayer = window.dataLayer || [];
-            window.dataLayer.push({ event: 'smartico_initialized' });
-
-            syncLoginState();
-        };
-
-        document.head.appendChild(script);
+        return new Promise(resolve => {
+            if (window._smartico) return resolve();
+            const script = document.createElement('script');
+            script.src = SMARTICO_SRC;
+            script.async = true;
+            script.onload = () => {
+                window._smartico.init(PROJECT_KEY, { brand_key: BRAND_KEY });
+                smarticoReady = true;
+                window.dataLayer = window.dataLayer || [];
+                window.dataLayer.push({ event: 'smartico_initialized' });
+                resolve();
+            };
+            document.head.appendChild(script);
+        });
     }
 
     /* ---------------- POST LOGIN SETUP ---------------- */
-    function postLoginSetup(userId) {
-        if (!smarticoReady || !userId) return;
+    async function postLoginSetup(userId) {
+        if (!userId || !window._smartico) return;
 
-        // --- skin via segment ---
+        // 1️⃣ Skin via segment
         if (!window._smartico.__skinApplied) {
-            window._smartico.api?.checkSegmentMatch(SEGMENT_ID)?.then(match => {
-                if (match === true) {
+            try {
+                const inSegment = await window._smartico.api.checkSegmentMatch(SEGMENT_ID);
+                if (inSegment) {
                     window._smartico.setSkin(SKIN_NAME);
                     window._smartico.__skinApplied = true;
                     localStorage.setItem('smartico_skin_v3', 'true');
                     console.log('[Smartico] Skin applied via segment', SEGMENT_ID);
                 }
-            });
+            } catch (e) {
+                console.warn('[Smartico] Skin apply failed', e);
+            }
         }
 
-        // --- control flag with retry ---
+        // 2️⃣ Control flag with retry
         if (!localStorage.getItem('smartico_control')) {
-            let attempts = 0;
-            const maxAttempts = 20;
-            (function poll() {
-                attempts++;
+            let profile = null;
+            for (let i = 0; i < 20; i++) {
                 try {
-                    const profile = window._smartico.api.getUserProfile();
-                    if (
-                        profile &&
-                        profile.ach_gamification_in_control_group !== undefined
-                    ) {
-                        localStorage.setItem(
-                            'smartico_control',
-                            String(profile.ach_gamification_in_control_group)
-                        );
-                        console.log(
-                            '[Smartico] control group saved:',
-                            profile.ach_gamification_in_control_group
-                        );
-                        return;
-                    }
+                    profile = window._smartico.api.getUserProfile();
+                    if (profile && profile.ach_gamification_in_control_group !== undefined) break;
                 } catch (e) {}
-                if (attempts < maxAttempts) setTimeout(poll, 100);
-                else console.warn('[Smartico] control group not available after retry');
-            })();
+                await sleep(100);
+            }
+            if (profile?.ach_gamification_in_control_group !== undefined) {
+                localStorage.setItem(
+                    'smartico_control',
+                    String(profile.ach_gamification_in_control_group)
+                );
+                console.log('[Smartico] Control group saved:', profile.ach_gamification_in_control_group);
+            } else console.warn('[Smartico] Control group not available after retries');
         }
 
-        // --- suspension ---
+        // 3️⃣ Suspension
         const shouldSuspend = isRestrictedPage();
         if (shouldSuspend !== lastSuspendState) {
             lastSuspendState = shouldSuspend;
@@ -106,21 +97,29 @@
     }
 
     /* ---------------- LOGIN / LOGOUT ---------------- */
-    function loginUser() {
+    async function loginUser() {
+        if (!smarticoReady) await initSmartico();
+
         const userId = getLatestUserIdFromDataLayer();
         if (!userId) return;
 
         window._smartico_user_id = userId;
         window._smartico?.setUserId?.(userId);
 
-        postLoginSetup(userId);
+        await postLoginSetup(userId);
 
         window.dataLayer.push({ event: 'smartico_login', userId });
         console.log('[Smartico] logged in:', userId);
     }
 
-    function logoutUser() {
-        window._smartico_user_id = null;
+    async function logoutUser() {
+        if (!smarticoReady) await initSmartico();
+
+        try {
+            window._smartico_user_id = null;
+        } catch (e) {
+            console.warn('[Smartico] Failed to reset user_id', e);
+        }
 
         localStorage.removeItem('smartico_skin_v3');
         localStorage.removeItem('smartico_control');
@@ -130,41 +129,21 @@
         console.log('[Smartico] logged out');
     }
 
-    function syncLoginState() {
+    /* ---------------- SYNC ---------------- */
+    async function syncLoginState() {
         const token = localStorage.getItem('token');
         if (token) {
-            waitForUserIdAndLogin();
+            await loginUser();
         } else {
-            logoutUser();
+            await logoutUser();
         }
-    }
-
-    function waitForUserIdAndLogin() {
-        if (!smarticoReady) return;
-        if (!localStorage.getItem('token')) return;
-
-        let attempts = 0;
-        const maxAttempts = 30;
-
-        (function poll() {
-            attempts++;
-            const userId = getLatestUserIdFromDataLayer();
-            if (userId) {
-                loginUser();
-                return;
-            }
-            if (attempts < maxAttempts) setTimeout(poll, 100);
-            else console.warn('[Smartico] userID not found after login');
-        })();
     }
 
     /* ---------------- SPA / Deep link ---------------- */
     function handleUrlChange() {
         if (!window._smartico?.dp) return;
-
         const hash = location.hash;
         if (!hash.startsWith('#smartico_dl=')) return;
-
         window._smartico.dp(hash.replace('#smartico_dl=', ''));
         history.replaceState(null, document.title, location.pathname + location.search);
     }
@@ -181,7 +160,7 @@
     ['hashchange', 'popstate', 'pushState', 'replaceState'].forEach(e => {
         window.addEventListener(e, () => {
             handleUrlChange();
-            loginUser(); // SPA-safe: проверка и логин
+            loginUser(); // SPA-safe
         });
     });
 
@@ -193,7 +172,6 @@
     (function () {
         const setItem = localStorage.setItem;
         const removeItem = localStorage.removeItem;
-
         localStorage.setItem = function (k, v) {
             setItem.apply(this, arguments);
             if (k === 'token') syncLoginState();
@@ -206,5 +184,5 @@
 
     /* ---------------- BOOT ---------------- */
     setLanguage();
-    initSmartico();
+    syncLoginState();
 })();
