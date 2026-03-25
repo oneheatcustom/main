@@ -31,16 +31,12 @@
         return /^\/([a-z]{2}(?:-[a-z]{2})?\/)?(deposit|withdraw)$/.test(path);
     }
 
-    // Функция синхронизации флага smartico_control
-    function syncSmarticoControl() {
-        // Проверяем, если уже есть флаг в localStorage
-        const currentControl = localStorage.getItem('smartico_control');
-        if (currentControl !== null) {
-            console.log('[Smartico] control flag already set');
-            return; // Уже установлен, не нужно перезапрашивать
-        }
+    /* ---------------- SYNC SMARTICO CONTROL ---------------- */
 
-        // API запрос к Smartico, чтобы получить флаг
+    function syncSmarticoControl() {
+        // Проверка, чтобы не дергать API каждый раз в SPA
+        if (localStorage.getItem('smartico_control') !== null) return;
+
         try {
             const profile = window._smartico?.api?.getUserProfile?.();
             if (profile && profile.ach_gamification_in_control_group !== undefined) {
@@ -52,36 +48,6 @@
         } catch (e) {
             console.warn('[Smartico] Error fetching control flag', e);
         }
-    }
-
-    // Функция инициализации флагов Smartico
-    function initSmarticoFlags() {
-        // Проверка на то, был ли уже установлен флаг
-        const currentControl = localStorage.getItem('smartico_control');
-        if (currentControl !== null) {
-            console.log('[Smartico] Flag already initialized.');
-            return; // Не инициализируем, если уже есть флаг
-        }
-
-        let attempts = 0;
-        const maxAttempts = 150;  // Увеличиваем количество попыток
-        const interval = 200;  // Интервал между попытками (поставим больше, чтобы не перегружать систему)
-
-        // Используем setInterval для контроля загрузки Smartico API
-        const intervalId = setInterval(() => {
-            attempts++;
-
-            if (window._smartico && window._smartico.api && typeof window._smartico.api.getUserProfile === 'function') {
-                syncSmarticoControl(); // Инициализация флага
-                clearInterval(intervalId); // Останавливаем попытки, когда API готово
-                return;
-            }
-
-            if (attempts >= maxAttempts) {
-                console.warn('[Smartico] API not available after maximum attempts');
-                clearInterval(intervalId); // Останавливаем, если превышен лимит попыток
-            }
-        }, interval);
     }
 
     /* ---------------- INIT ---------------- */
@@ -100,9 +66,7 @@
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({ event: 'smartico_initialized' });
 
-            initSmarticoFlags(); // Инициализация флагов после загрузки API
-
-            syncLoginState(); // Проверка инициализации логина
+            syncLoginState();
         };
 
         document.head.appendChild(script);
@@ -127,7 +91,6 @@
             isFetching = false;
 
             const number = result?.number;
-
             if (!number) {
                 console.warn('[Smartico] number not found');
                 return;
@@ -137,12 +100,8 @@
         })
         .catch(() => {
             isFetching = false;
-
-            if (retries > 0) {
-                setTimeout(() => fetchUserNumber(token, retries - 1), 500);
-            } else {
-                console.warn('[Smartico] API failed');
-            }
+            if (retries > 0) setTimeout(() => fetchUserNumber(token, retries - 1), 500);
+            else console.warn('[Smartico] API failed');
         });
     }
 
@@ -153,18 +112,13 @@
         if (!userId || userId === currentUserId) return;
 
         currentUserId = userId;
-
         window._smartico_user_id = userId;
         window._smartico?.setUserId?.(userId);
 
         applySkinViaSegment();
         updateSmarticoSuspension();
 
-        window.dataLayer.push({
-            event: 'smartico_login',
-            userId
-        });
-
+        window.dataLayer.push({ event: 'smartico_login', userId });
         console.log('[Smartico] logged in:', userId);
     }
 
@@ -175,8 +129,7 @@
         window._smartico_user_id = null;
 
         localStorage.removeItem('smartico_skin_v3');
-        localStorage.removeItem('smartico_control'); // Также удаляем флаг
-
+        localStorage.removeItem('smartico_control');
         lastSuspendState = null;
 
         window.dataLayer.push({ event: 'smartico_logout' });
@@ -202,19 +155,15 @@
 
     function applySkinViaSegment() {
         if (!currentUserId) return;
-
-        const skinApplied = localStorage.getItem('smartico_skin_v3');
-        if (skinApplied === currentUserId) return; // Skin уже применен для этого пользователя
+        if (window._smartico.__skinApplied) return;
 
         window._smartico.api
             ?.checkSegmentMatch(SEGMENT_ID)
             ?.then(match => {
                 if (match === true) {
                     window._smartico.setSkin(SKIN_NAME);
-
-                    // Сохраняем идентификатор пользователя в localStorage
-                    localStorage.setItem('smartico_skin_v3', currentUserId);
-                    console.log('[Smartico] skin applied');
+                    window._smartico.__skinApplied = true;
+                    localStorage.setItem('smartico_skin_v3', 'true');
                 }
             });
     }
@@ -255,12 +204,12 @@
         };
     });
 
-    // Слушатели изменений URL
+    // --- SPA обработка URL, дергаем syncSmarticoControl только если флаг не установлен ---
     ['hashchange', 'popstate', 'pushState', 'replaceState'].forEach(e => {
         window.addEventListener(e, () => {
             handleUrlChange();
             updateSmarticoSuspension();
-            initSmarticoFlags(); // Попытка инициализировать флаг на изменение URL
+            syncSmarticoControl(); // <-- только здесь, проверка внутри функции
         });
     });
 
