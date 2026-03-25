@@ -32,17 +32,24 @@
     }
 
     function syncSmarticoControl() {
+        // Проверяем, если уже есть флаг в localStorage
         const currentControl = localStorage.getItem('smartico_control');
-        if (currentControl !== null) return; // Already set, no need to fetch again
+        if (currentControl !== null) {
+            console.log('[Smartico] control flag already set');
+            return; // Уже установлен, не нужно перезапрашивать
+        }
 
+        // API запрос к Smartico, чтобы получить флаг
         try {
-            const profile = window._smartico?.api.getUserProfile?.();
+            const profile = window._smartico?.api?.getUserProfile?.();
             if (profile && profile.ach_gamification_in_control_group !== undefined) {
                 localStorage.setItem('smartico_control', String(profile.ach_gamification_in_control_group));
                 console.log('[Smartico] control flag saved');
+            } else {
+                console.warn('[Smartico] control flag not found in profile');
             }
         } catch (e) {
-            console.warn('[Smartico] control flag error', e);
+            console.warn('[Smartico] Error fetching control flag', e);
         }
     }
 
@@ -51,10 +58,14 @@
         (function wait() {
             attempts++;
             if (window._smartico && window._smartico.api && typeof window._smartico.api.getUserProfile === 'function') {
-                syncSmarticoControl();
+                syncSmarticoControl(); // Инициализация флага
                 return;
             }
-            if (attempts < 50) setTimeout(wait, 100);
+            if (attempts < 50) {
+                setTimeout(wait, 100); // Повторить попытку через 100 мс
+            } else {
+                console.warn('[Smartico] Smartico API not available after 50 attempts');
+            }
         })();
     }
 
@@ -74,9 +85,9 @@
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({ event: 'smartico_initialized' });
 
-            initSmarticoFlags(); // Initialize control flags after Smartico is ready
+            initSmarticoFlags(); // Инициализируем флаги Smartico после загрузки API
 
-            syncLoginState();
+            syncLoginState(); // Проверка инициализации логина
         };
 
         document.head.appendChild(script);
@@ -149,7 +160,7 @@
         window._smartico_user_id = null;
 
         localStorage.removeItem('smartico_skin_v3');
-        localStorage.removeItem('smartico_control'); // Also clear control flag
+        localStorage.removeItem('smartico_control'); // Также удаляем флаг
 
         lastSuspendState = null;
 
@@ -178,7 +189,7 @@
         if (!currentUserId) return;
 
         const skinApplied = localStorage.getItem('smartico_skin_v3');
-        if (skinApplied === currentUserId) return; // Already applied for this user
+        if (skinApplied === currentUserId) return; // Skin уже применен для этого пользователя
 
         window._smartico.api
             ?.checkSegmentMatch(SEGMENT_ID)
@@ -186,7 +197,7 @@
                 if (match === true) {
                     window._smartico.setSkin(SKIN_NAME);
 
-                    // Save user ID in localStorage to mark skin applied
+                    // Сохраняем идентификатор пользователя в localStorage
                     localStorage.setItem('smartico_skin_v3', currentUserId);
                     console.log('[Smartico] skin applied');
                 }
