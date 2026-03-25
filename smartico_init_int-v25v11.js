@@ -26,32 +26,33 @@
         if (localStorage.getItem('smartico_control') !== null) return;
         if (isControlSyncing) return;
 
-        const apiReady = window._smartico?.api?.getUserProfile;
-        if (apiReady) {
-            isControlSyncing = true;
-            saveControlFlag();
-            isControlSyncing = false;
-            return;
-        }
-
         isControlSyncing = true;
-        setTimeout(() => {
-            if (window._smartico?.api?.getUserProfile) saveControlFlag();
-            else console.warn('[Smartico] API still not ready, control flag not set');
-            isControlSyncing = false;
-        }, 150);
-    }
+        let attempts = 0;
 
-    function saveControlFlag() {
-        try {
-            const profile = window._smartico.api.getUserProfile();
-            if (profile?.ach_gamification_in_control_group !== undefined) {
-                localStorage.setItem('smartico_control', String(profile.ach_gamification_in_control_group));
-                console.log('[Smartico] control flag saved (light)');
-            } else {
-                console.warn('[Smartico] control flag not found in profile');
+        (function waitForProfile() {
+            attempts++;
+            const profileFunc = window._smartico?.api?.getUserProfile;
+            if (profileFunc) {
+                try {
+                    const profile = profileFunc();
+                    if (profile?.ach_gamification_in_control_group !== undefined) {
+                        localStorage.setItem('smartico_control', String(profile.ach_gamification_in_control_group));
+                        console.log('[Smartico] control flag saved (light, SPA)');
+                    } else {
+                        console.warn('[Smartico] control flag not found in profile');
+                    }
+                } catch (e) {
+                    console.warn('[Smartico] Error fetching control flag', e);
+                }
+                isControlSyncing = false;
+                return;
             }
-        } catch (e) { console.warn('[Smartico] Error fetching control flag', e); }
+            if (attempts < 50) setTimeout(waitForProfile, 100);
+            else {
+                console.warn('[Smartico] API not ready, control flag not set after waiting');
+                isControlSyncing = false;
+            }
+        })();
     }
 
     /* ---------------- LIGHT SKIN ---------------- */
@@ -61,36 +62,35 @@
         if (localStorage.getItem('smartico_skin_v3') === 'true') return;
         if (isSkinApplying) return;
 
-        const apiReady = window._smartico?.api?.checkSegmentMatch;
-        if (apiReady) {
-            isSkinApplying = true;
-            checkAndApplySkin(() => { isSkinApplying = false; });
-            return;
-        }
-
         isSkinApplying = true;
-        setTimeout(() => {
-            if (window._smartico?.api?.checkSegmentMatch) {
-                checkAndApplySkin(() => { isSkinApplying = false; });
-            } else {
-                console.warn('[Smartico] API not ready, skin not applied');
+        let attempts = 0;
+
+        (function waitForAPI() {
+            attempts++;
+            const apiReady = window._smartico?.api?.checkSegmentMatch;
+            if (apiReady) {
+                window._smartico.api.checkSegmentMatch(SEGMENT_ID)
+                    .then(inSegment => {
+                        if (inSegment === true) {
+                            window._smartico.setSkin(SKIN_NAME);
+                            localStorage.setItem('smartico_skin_v3', 'true');
+                            window._smartico.__skinApplied = true;
+                            console.log('[Smartico] Skin applied (light, SPA)');
+                        }
+                        isSkinApplying = false;
+                    })
+                    .catch(e => {
+                        console.warn('[Smartico] Error applying skin', e);
+                        isSkinApplying = false;
+                    });
+                return;
+            }
+            if (attempts < 50) setTimeout(waitForAPI, 100);
+            else {
+                console.warn('[Smartico] API not ready, skin not applied after waiting');
                 isSkinApplying = false;
             }
-        }, 150);
-    }
-
-    function checkAndApplySkin(callback) {
-        window._smartico.api.checkSegmentMatch(SEGMENT_ID)
-            .then(inSegment => {
-                if (inSegment === true) {
-                    window._smartico.setSkin(SKIN_NAME);
-                    localStorage.setItem('smartico_skin_v3', 'true');
-                    window._smartico.__skinApplied = true;
-                    console.log('[Smartico] Skin applied (light)');
-                }
-                callback?.();
-            })
-            .catch(e => { console.warn('[Smartico] Error applying skin', e); callback?.(); });
+        })();
     }
 
     /* ---------------- INIT ---------------- */
