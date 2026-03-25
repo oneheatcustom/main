@@ -13,7 +13,7 @@
     function setLanguage() { window._smartico_language = (document.documentElement.lang || 'EN').toUpperCase(); }
     function isRestrictedPage() { 
         const path = location.pathname.replace(/\/+$/, '').toLowerCase();
-        return /(^|\/)(deposit|withdraw|support|payments|my-account|game|phone-confirmation|bonuses|promo)(\/|$)/.test(path);
+        return /(^|\/)(deposit|withdraw|support|payments|my-account|game|phone-confirmation|bonuses|promo|top-express)(\/|$)/.test(path);
     }
 
     let isControlSyncing = false;
@@ -127,7 +127,7 @@
             window.dataLayer.push({ event: 'smartico_initialized' });
             applySkinViaSegmentLight();
             syncSmarticoControlLight();
-            syncLoginState(); // авторизация пользователя при загрузке
+            syncLoginState();
         };
         document.head.appendChild(script);
     }
