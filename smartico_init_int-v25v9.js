@@ -31,17 +31,36 @@
         return /^\/([a-z]{2}(?:-[a-z]{2})?\/)?(deposit|withdraw)$/.test(path);
     }
 
-    /* ---------------- SYNC SMARTICO CONTROL ---------------- */
+    /* ---------------- LIGHT SMARTICO CONTROL ---------------- */
 
-    function syncSmarticoControl() {
-        // Проверка, чтобы не дергать API каждый раз в SPA
+    function syncSmarticoControlLight() {
         if (localStorage.getItem('smartico_control') !== null) return;
 
+        const apiReady = window._smartico?.api?.getUserProfile;
+        if (apiReady) {
+            saveControlFlag();
+            return;
+        }
+
+        // Короткий таймаут, чтобы дождаться асинхронной загрузки Smartico API
+        setTimeout(() => {
+            if (window._smartico?.api?.getUserProfile) {
+                saveControlFlag();
+            } else {
+                console.warn('[Smartico] API still not ready, control flag not set');
+            }
+        }, 150);
+    }
+
+    function saveControlFlag() {
         try {
-            const profile = window._smartico?.api?.getUserProfile?.();
-            if (profile && profile.ach_gamification_in_control_group !== undefined) {
-                localStorage.setItem('smartico_control', String(profile.ach_gamification_in_control_group));
-                console.log('[Smartico] control flag saved');
+            const profile = window._smartico.api.getUserProfile();
+            if (profile?.ach_gamification_in_control_group !== undefined) {
+                localStorage.setItem(
+                    'smartico_control',
+                    String(profile.ach_gamification_in_control_group)
+                );
+                console.log('[Smartico] control flag saved (light)');
             } else {
                 console.warn('[Smartico] control flag not found in profile');
             }
@@ -204,12 +223,12 @@
         };
     });
 
-    // --- SPA обработка URL, дергаем syncSmarticoControl только если флаг не установлен ---
+    // --- SPA обработка URL: лёгкая версия syncSmarticoControl
     ['hashchange', 'popstate', 'pushState', 'replaceState'].forEach(e => {
         window.addEventListener(e, () => {
             handleUrlChange();
             updateSmarticoSuspension();
-            syncSmarticoControl(); // <-- только здесь, проверка внутри функции
+            syncSmarticoControlLight();
         });
     });
 
