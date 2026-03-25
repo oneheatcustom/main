@@ -9,7 +9,6 @@
     let currentUserId = null;
     let lastSuspendState = null;
 
-    /* ---------------- HELPERS ---------------- */
     function getToken() { return localStorage.getItem('token'); }
     function setLanguage() { window._smartico_language = (document.documentElement.lang || 'EN').toUpperCase(); }
     function isRestrictedPage() { 
@@ -17,7 +16,6 @@
         return /(^|\/)(deposit|withdraw|support|payments|my-account|game|phone-confirmation|bonuses|promo)(\/|$)/.test(path);
     }
 
-    /* ---------------- LIGHT CONTROL FLAG ---------------- */
     let isControlSyncing = false;
     function syncSmarticoControlLight() {
     if (!getToken()) return;
@@ -170,7 +168,6 @@
         });
     }
 
-    /* ---------------- LOGIN ---------------- */
     let lastTokenUsed = null;
     function loginUserWithId(userId) {
         if (!smarticoReady) return;
@@ -220,7 +217,6 @@
         window._smartico.suspendMiniGames?.(shouldSuspend);
     }
 
-    /* ---------------- SPA ---------------- */
     function handleUrlChange() {
         if (!window._smartico?.dp) return;
         const hash = location.hash;
@@ -247,7 +243,6 @@
         });
     });
 
-    /* ---------------- TOKEN WATCH ---------------- */
     window.addEventListener('storage', e => {
         if (e.key === 'token') syncLoginState();
     });
@@ -266,7 +261,6 @@
         };
     })();
 
-    /* ---------------- BOOT ---------------- */
     setLanguage();
     initSmartico();
     clearLocalStorageIfLoggedOut();
