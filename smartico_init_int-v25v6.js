@@ -64,8 +64,8 @@
         }
 
         let attempts = 0;
-        const maxAttempts = 100;  // Увеличиваем количество попыток
-        const interval = 100;  // Интервал между попытками
+        const maxAttempts = 150;  // Увеличиваем количество попыток
+        const interval = 200;  // Интервал между попытками (поставим больше, чтобы не перегружать систему)
 
         // Используем setInterval для контроля загрузки Smartico API
         const intervalId = setInterval(() => {
