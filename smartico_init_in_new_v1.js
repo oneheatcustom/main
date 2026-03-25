@@ -18,6 +18,7 @@
     }
 
     /* ---------------- LIGHT CONTROL FLAG ---------------- */
+    let isControlSyncing = false;
     function syncSmarticoControlLight() {
     if (!getToken()) return;
 
