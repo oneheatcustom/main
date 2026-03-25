@@ -31,6 +31,7 @@
         return /^\/([a-z]{2}(?:-[a-z]{2})?\/)?(deposit|withdraw)$/.test(path);
     }
 
+    // Функция синхронизации флага smartico_control
     function syncSmarticoControl() {
         // Проверяем, если уже есть флаг в localStorage
         const currentControl = localStorage.getItem('smartico_control');
@@ -53,18 +54,22 @@
         }
     }
 
+    // Функция инициализации флагов Smartico
     function initSmarticoFlags() {
         let attempts = 0;
+        const maxAttempts = 100;  // Увеличим количество попыток
+        const interval = 100;  // Интервал между попытками
+
         (function wait() {
             attempts++;
             if (window._smartico && window._smartico.api && typeof window._smartico.api.getUserProfile === 'function') {
                 syncSmarticoControl(); // Инициализация флага
                 return;
             }
-            if (attempts < 50) {
-                setTimeout(wait, 100); // Повторить попытку через 100 мс
+            if (attempts < maxAttempts) {
+                setTimeout(wait, interval); // Повторить попытку через заданный интервал
             } else {
-                console.warn('[Smartico] Smartico API not available after 50 attempts');
+                console.warn('[Smartico] Smartico API not available after 100 attempts');
             }
         })();
     }
@@ -244,6 +249,7 @@
         window.addEventListener(e, () => {
             handleUrlChange();
             updateSmarticoSuspension();
+            initSmarticoFlags(); // Попытка инициализировать флаг на изменение URL
         });
     });
 
