@@ -2,53 +2,43 @@
     const SMARTICO_SRC = 'https://d1om8bhvvd0l9e.cloudfront.net/s8.js';
     const PROJECT_KEY = 'b9c2f276-be35-4b8c-873a-3237486db424-4';
     const BRAND_KEY = '16b5e781';
-
     const SKIN_NAME = 'v3_grove_india_15_new';
     const SEGMENT_ID = 35936;
-
     const ACCOUNT_API = '/api/v3/user/getAccountInfo';
 
     let smarticoReady = false;
     let currentUserId = null;
     let lastSuspendState = null;
-
     let lastTokenUsed = null;
     let isFetching = false;
 
-    /* ---------------- helpers ---------------- */
-
-    function getToken() {
-        return localStorage.getItem('token');
-    }
-
-    function setLanguage() {
-        window._smartico_language =
-            (document.documentElement.lang || 'EN').toUpperCase();
-    }
-
-    function isRestrictedPage() {
+    /* ---------------- HELPERS ---------------- */
+    function getToken() { return localStorage.getItem('token'); }
+    function setLanguage() { window._smartico_language = (document.documentElement.lang || 'EN').toUpperCase(); }
+    function isRestrictedPage() { 
         const path = location.pathname.replace(/\/+$/, '').toLowerCase();
-        return /^\/([a-z]{2}(?:-[a-z]{2})?\/)?(deposit|withdraw)$/.test(path);
+        return /^\/([a-z]{2}(?:-[a-z]{2})?\/)?(deposit|withdraw)$/.test(path); 
     }
 
-    /* ---------------- LIGHT SMARTICO CONTROL ---------------- */
-
+    /* ---------------- LIGHT CONTROL FLAG ---------------- */
+    let isControlSyncing = false;
     function syncSmarticoControlLight() {
         if (localStorage.getItem('smartico_control') !== null) return;
+        if (isControlSyncing) return;
 
         const apiReady = window._smartico?.api?.getUserProfile;
         if (apiReady) {
+            isControlSyncing = true;
             saveControlFlag();
+            isControlSyncing = false;
             return;
         }
 
-        // Короткий таймаут, чтобы дождаться асинхронной загрузки Smartico API
+        isControlSyncing = true;
         setTimeout(() => {
-            if (window._smartico?.api?.getUserProfile) {
-                saveControlFlag();
-            } else {
-                console.warn('[Smartico] API still not ready, control flag not set');
-            }
+            if (window._smartico?.api?.getUserProfile) saveControlFlag();
+            else console.warn('[Smartico] API still not ready, control flag not set');
+            isControlSyncing = false;
         }, 150);
     }
 
@@ -56,43 +46,71 @@
         try {
             const profile = window._smartico.api.getUserProfile();
             if (profile?.ach_gamification_in_control_group !== undefined) {
-                localStorage.setItem(
-                    'smartico_control',
-                    String(profile.ach_gamification_in_control_group)
-                );
+                localStorage.setItem('smartico_control', String(profile.ach_gamification_in_control_group));
                 console.log('[Smartico] control flag saved (light)');
             } else {
                 console.warn('[Smartico] control flag not found in profile');
             }
-        } catch (e) {
-            console.warn('[Smartico] Error fetching control flag', e);
+        } catch (e) { console.warn('[Smartico] Error fetching control flag', e); }
+    }
+
+    /* ---------------- LIGHT SKIN ---------------- */
+    let isSkinApplying = false;
+    function applySkinViaSegmentLight() {
+        if (window._smartico?.__skinApplied) return;
+        if (localStorage.getItem('smartico_skin_v3') === 'true') return;
+        if (isSkinApplying) return;
+
+        const apiReady = window._smartico?.api?.checkSegmentMatch;
+        if (apiReady) {
+            isSkinApplying = true;
+            checkAndApplySkin(() => { isSkinApplying = false; });
+            return;
         }
+
+        isSkinApplying = true;
+        setTimeout(() => {
+            if (window._smartico?.api?.checkSegmentMatch) {
+                checkAndApplySkin(() => { isSkinApplying = false; });
+            } else {
+                console.warn('[Smartico] API not ready, skin not applied');
+                isSkinApplying = false;
+            }
+        }, 150);
+    }
+
+    function checkAndApplySkin(callback) {
+        window._smartico.api.checkSegmentMatch(SEGMENT_ID)
+            .then(inSegment => {
+                if (inSegment === true) {
+                    window._smartico.setSkin(SKIN_NAME);
+                    localStorage.setItem('smartico_skin_v3', 'true');
+                    window._smartico.__skinApplied = true;
+                    console.log('[Smartico] Skin applied (light)');
+                }
+                callback?.();
+            })
+            .catch(e => { console.warn('[Smartico] Error applying skin', e); callback?.(); });
     }
 
     /* ---------------- INIT ---------------- */
-
     function initSmartico() {
         if (window._smartico) return;
 
         const script = document.createElement('script');
         script.src = SMARTICO_SRC;
         script.async = true;
-
         script.onload = function () {
             window._smartico.init(PROJECT_KEY, { brand_key: BRAND_KEY });
             smarticoReady = true;
-
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({ event: 'smartico_initialized' });
-
             syncLoginState();
         };
-
         document.head.appendChild(script);
     }
 
     /* ---------------- API ---------------- */
-
     function fetchUserNumber(token, retries = 2) {
         if (isFetching) return;
         isFetching = true;
@@ -108,13 +126,8 @@
         .then(res => res.json())
         .then(result => {
             isFetching = false;
-
             const number = result?.number;
-            if (!number) {
-                console.warn('[Smartico] number not found');
-                return;
-            }
-
+            if (!number) return console.warn('[Smartico] number not found');
             loginUserWithId(number);
         })
         .catch(() => {
@@ -125,7 +138,6 @@
     }
 
     /* ---------------- LOGIN ---------------- */
-
     function loginUserWithId(userId) {
         if (!smarticoReady) return;
         if (!userId || userId === currentUserId) return;
@@ -134,7 +146,6 @@
         window._smartico_user_id = userId;
         window._smartico?.setUserId?.(userId);
 
-        applySkinViaSegment();
         updateSmarticoSuspension();
 
         window.dataLayer.push({ event: 'smartico_login', userId });
@@ -157,44 +168,17 @@
 
     function syncLoginState() {
         const token = getToken();
-
-        if (!token) {
-            logoutUser();
-            lastTokenUsed = null;
-            return;
-        }
-
+        if (!token) { logoutUser(); lastTokenUsed = null; return; }
         if (token === lastTokenUsed) return;
         lastTokenUsed = token;
-
         fetchUserNumber(token);
     }
 
-    /* ---------------- SKIN ---------------- */
-
-    function applySkinViaSegment() {
-        if (!currentUserId) return;
-        if (window._smartico.__skinApplied) return;
-
-        window._smartico.api
-            ?.checkSegmentMatch(SEGMENT_ID)
-            ?.then(match => {
-                if (match === true) {
-                    window._smartico.setSkin(SKIN_NAME);
-                    window._smartico.__skinApplied = true;
-                    localStorage.setItem('smartico_skin_v3', 'true');
-                }
-            });
-    }
-
     /* ---------------- SUSPENSION ---------------- */
-
     function updateSmarticoSuspension() {
         if (!currentUserId || !window._smartico) return;
-
         const shouldSuspend = isRestrictedPage();
         if (shouldSuspend === lastSuspendState) return;
-
         lastSuspendState = shouldSuspend;
 
         window._smartico.suspendPopups?.(shouldSuspend);
@@ -203,13 +187,10 @@
     }
 
     /* ---------------- SPA ---------------- */
-
     function handleUrlChange() {
         if (!window._smartico?.dp) return;
-
         const hash = location.hash;
         if (!hash.startsWith('#smartico_dl=')) return;
-
         window._smartico.dp(hash.replace('#smartico_dl=', ''));
         history.replaceState(null, document.title, location.pathname + location.search);
     }
@@ -223,17 +204,16 @@
         };
     });
 
-    // --- SPA обработка URL: лёгкая версия syncSmarticoControl
     ['hashchange', 'popstate', 'pushState', 'replaceState'].forEach(e => {
         window.addEventListener(e, () => {
             handleUrlChange();
             updateSmarticoSuspension();
-            syncSmarticoControlLight();
+            syncSmarticoControlLight();   // лёгкая версия control flag
+            applySkinViaSegmentLight();   // лёгкая версия skin
         });
     });
 
     /* ---------------- TOKEN WATCH ---------------- */
-
     window.addEventListener('storage', e => {
         if (e.key === 'token') syncLoginState();
     });
@@ -254,7 +234,6 @@
     })();
 
     /* ---------------- BOOT ---------------- */
-
     setLanguage();
     initSmartico();
 })();
