@@ -14,7 +14,7 @@
     function setLanguage() { window._smartico_language = (document.documentElement.lang || 'EN').toUpperCase(); }
     function isRestrictedPage() { 
         const path = location.pathname.replace(/\/+$/, '').toLowerCase();
-        return /^\/([a-z]{2}(?:-[a-z]{2})?\/)?(deposit|withdraw)$/.test(path); 
+        return /(^|\/)(deposit|withdraw|support|payments|my-account|game|phone-confirmation|bonuses|promo)(\/|$)/.test(path);
     }
 
     /* ---------------- LIGHT CONTROL FLAG ---------------- */
@@ -25,8 +25,8 @@
 
     isControlSyncing = true;
     let attempts = 0;
-    const MAX_ATTEMPTS = 100;
-    const INTERVAL = 300;
+    const MAX_ATTEMPTS = 150;
+    const INTERVAL = 500;
 
     (function waitForSmartico() {
         attempts++;
@@ -65,13 +65,13 @@
     /* ---------------- LIGHT SKIN ---------------- */
     let isSkinApplying = false;
     function applySkinViaSegmentLight() {
-    if (localStorage.getItem('smartico_skin_v3') === 'true') return;
+    if (localStorage.getItem('smartico_skin') === 'true') return;
     if (isSkinApplying) return;
 
     isSkinApplying = true;
     let attempts = 0;
-    const MAX_ATTEMPTS = 100;
-    const INTERVAL = 300;
+    const MAX_ATTEMPTS = 150;
+    const INTERVAL = 500;
 
     (function waitForAPI() {
         attempts++;
@@ -85,7 +85,7 @@
                 .then(inSegment => {
                     if (inSegment === true) {
                         window._smartico.setSkin(SKIN_NAME);
-                        localStorage.setItem('smartico_skin_v3', 'true');
+                        localStorage.setItem('smartico_skin', 'true');
                         console.log('[Smartico] Skin applied (light, SPA)');
                     }
                 })
@@ -116,6 +116,8 @@
             smarticoReady = true;
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({ event: 'smartico_initialized' });
+            applySkinViaSegmentLight();
+            syncSmarticoControlLight();
             syncLoginState(); // авторизация пользователя при загрузке
         };
         document.head.appendChild(script);
@@ -172,7 +174,7 @@
         currentUserId = null;
         window._smartico_user_id = null;
 
-        localStorage.removeItem('smartico_skin_v3');
+        localStorage.removeItem('smartico_skin');
         localStorage.removeItem('smartico_control');
         lastSuspendState = null;
 
