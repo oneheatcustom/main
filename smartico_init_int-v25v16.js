@@ -22,36 +22,39 @@
 
     /* ---------------- LIGHT CONTROL FLAG ---------------- */
     let isControlSyncing = false;
-    function syncSmarticoControlLight() {
+function syncSmarticoControlLight() {
     if (localStorage.getItem('smartico_control') !== null) return;
-
     if (isControlSyncing) return;
 
     isControlSyncing = true;
     let attempts = 0;
 
-    (function waitForProfile() {
+    (function waitForSmarticoAPI() {
         attempts++;
 
-        try {
-            const profileFunc = window._smartico?.api?.getUserProfile;
-            if (profileFunc && typeof profileFunc === 'function') {
-                const profile = profileFunc();
+        const api = window._smartico?.api;
+        if (api && typeof api.getUserProfile === 'function') {
+            try {
+                const profile = api.getUserProfile();
                 if (profile?.ach_gamification_in_control_group !== undefined) {
-                    localStorage.setItem('smartico_control', String(profile.ach_gamification_in_control_group));
+                    localStorage.setItem(
+                        'smartico_control',
+                        String(profile.ach_gamification_in_control_group)
+                    );
                     console.log('[Smartico] control flag saved (light, SPA)');
                 } else {
                     console.warn('[Smartico] control flag not found in profile');
                 }
+            } catch (e) {
+                console.warn('[Smartico] Error fetching control flag', e);
+            } finally {
                 isControlSyncing = false;
-                return;
             }
-        } catch (e) {
-            console.warn('[Smartico] Error fetching control flag', e);
+            return;
         }
 
         if (attempts < 50) {
-            setTimeout(waitForProfile, 100);
+            setTimeout(waitForSmarticoAPI, 200); // ждём API
         } else {
             console.warn('[Smartico] API not ready, control flag not set after waiting');
             isControlSyncing = false;
