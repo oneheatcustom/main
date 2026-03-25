@@ -56,22 +56,32 @@
 
     // Функция инициализации флагов Smartico
     function initSmarticoFlags() {
+        // Проверка на то, был ли уже установлен флаг
+        const currentControl = localStorage.getItem('smartico_control');
+        if (currentControl !== null) {
+            console.log('[Smartico] Flag already initialized.');
+            return; // Не инициализируем, если уже есть флаг
+        }
+
         let attempts = 0;
-        const maxAttempts = 100;  // Увеличим количество попыток
+        const maxAttempts = 100;  // Увеличиваем количество попыток
         const interval = 100;  // Интервал между попытками
 
-        (function wait() {
+        // Используем setInterval для контроля загрузки Smartico API
+        const intervalId = setInterval(() => {
             attempts++;
+
             if (window._smartico && window._smartico.api && typeof window._smartico.api.getUserProfile === 'function') {
                 syncSmarticoControl(); // Инициализация флага
+                clearInterval(intervalId); // Останавливаем попытки, когда API готово
                 return;
             }
-            if (attempts < maxAttempts) {
-                setTimeout(wait, interval); // Повторить попытку через заданный интервал
-            } else {
-                console.warn('[Smartico] Smartico API not available after 100 attempts');
+
+            if (attempts >= maxAttempts) {
+                console.warn('[Smartico] API not available after maximum attempts');
+                clearInterval(intervalId); // Останавливаем, если превышен лимит попыток
             }
-        })();
+        }, interval);
     }
 
     /* ---------------- INIT ---------------- */
@@ -90,7 +100,7 @@
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({ event: 'smartico_initialized' });
 
-            initSmarticoFlags(); // Инициализируем флаги Smartico после загрузки API
+            initSmarticoFlags(); // Инициализация флагов после загрузки API
 
             syncLoginState(); // Проверка инициализации логина
         };
@@ -245,6 +255,7 @@
         };
     });
 
+    // Слушатели изменений URL
     ['hashchange', 'popstate', 'pushState', 'replaceState'].forEach(e => {
         window.addEventListener(e, () => {
             handleUrlChange();
