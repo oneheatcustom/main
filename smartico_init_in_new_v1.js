@@ -18,12 +18,14 @@
     }
 
     /* ---------------- LIGHT CONTROL FLAG ---------------- */
-    let isControlSyncing = false;
     function syncSmarticoControlLight() {
+    if (!getToken()) return;
+
     if (localStorage.getItem('smartico_control') !== null) return;
     if (isControlSyncing) return;
 
     isControlSyncing = true;
+
     let attempts = 0;
     const MAX_ATTEMPTS = 150;
     const INTERVAL = 500;
@@ -38,25 +40,28 @@
         ) {
             try {
                 const profile = window._smartico.api.getUserProfile();
+
                 if (profile?.ach_gamification_in_control_group !== undefined) {
                     localStorage.setItem(
                         'smartico_control',
                         String(profile.ach_gamification_in_control_group)
                     );
-                    console.log('[Smartico] control flag saved (light, SPA)');
+
+                    console.log('[Smartico] control flag saved');
                 }
             } catch (e) {
                 console.warn('[Smartico] Error fetching control flag', e);
             } finally {
                 isControlSyncing = false;
             }
+
             return;
         }
 
         if (attempts < MAX_ATTEMPTS) {
             setTimeout(waitForSmartico, INTERVAL);
         } else {
-            console.warn('[Smartico] Smartico not ready, control flag not set');
+            console.warn('[Smartico] Smartico not ready');
             isControlSyncing = false;
         }
     })();
@@ -65,7 +70,11 @@
     /* ---------------- LIGHT SKIN ---------------- */
     let isSkinApplying = false;
     function applySkinViaSegmentLight() {
-    if (localStorage.getItem('smartico_skin') === 'true') return;
+    if (!getToken()) return;
+    if (window._smartico?.__skinApplied) {
+        console.log('[Smartico] Skin already applied');
+        return;
+    }
     if (isSkinApplying) return;
 
     isSkinApplying = true;
@@ -86,6 +95,7 @@
                     if (inSegment === true) {
                         window._smartico.setSkin(SKIN_NAME);
                         localStorage.setItem('smartico_skin', 'true');
+                        window._smartico.__skinApplied = true;
                         console.log('[Smartico] Skin applied (light, SPA)');
                     }
                 })
@@ -121,6 +131,13 @@
             syncLoginState(); // авторизация пользователя при загрузке
         };
         document.head.appendChild(script);
+    }
+
+    function clearLocalStorageIfLoggedOut() {
+        if (!getToken()) {
+            localStorage.removeItem('smartico_skin');
+            localStorage.removeItem('smartico_control');
+        }
     }
 
     /* ---------------- API ---------------- */
@@ -251,4 +268,5 @@
     /* ---------------- BOOT ---------------- */
     setLanguage();
     initSmartico();
+    clearLocalStorageIfLoggedOut();
 })();
