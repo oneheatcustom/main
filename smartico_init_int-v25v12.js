@@ -4,16 +4,12 @@
     const BRAND_KEY = '16b5e781';
     const SKIN_NAME = 'v3_grove_india_15_new';
     const SEGMENT_ID = 35936;
-    const ACCOUNT_API = '/api/v3/user/getAccountInfo';
 
     let smarticoReady = false;
     let currentUserId = null;
     let lastSuspendState = null;
-    let lastTokenUsed = null;
-    let isFetching = false;
 
     /* ---------------- HELPERS ---------------- */
-    function getToken() { return localStorage.getItem('token'); }
     function setLanguage() { window._smartico_language = (document.documentElement.lang || 'EN').toUpperCase(); }
     function isRestrictedPage() { 
         const path = location.pathname.replace(/\/+$/, '').toLowerCase();
@@ -31,22 +27,39 @@
 
         (function waitForProfile() {
             attempts++;
-            const profileFunc = window._smartico?.api?.getUserProfile;
-            if (profileFunc) {
+
+            const api = window._smartico?.api;
+            const profileFunc = api?.getUserProfile;
+
+            if (profileFunc && typeof profileFunc === 'function') {
                 try {
-                    const profile = profileFunc();
-                    if (profile?.ach_gamification_in_control_group !== undefined) {
-                        localStorage.setItem('smartico_control', String(profile.ach_gamification_in_control_group));
-                        console.log('[Smartico] control flag saved (light, SPA)');
+                    const result = profileFunc();
+                    if (result && typeof result.then === 'function') {
+                        result.then(profile => {
+                            if (profile?.ach_gamification_in_control_group !== undefined) {
+                                localStorage.setItem('smartico_control', String(profile.ach_gamification_in_control_group));
+                                console.log('[Smartico] control flag saved (light, SPA, async)');
+                            }
+                            isControlSyncing = false;
+                        }).catch(e => {
+                            console.warn('[Smartico] Error fetching control flag (async)', e);
+                            isControlSyncing = false;
+                        });
                     } else {
-                        console.warn('[Smartico] control flag not found in profile');
+                        const profile = result;
+                        if (profile?.ach_gamification_in_control_group !== undefined) {
+                            localStorage.setItem('smartico_control', String(profile.ach_gamification_in_control_group));
+                            console.log('[Smartico] control flag saved (light, SPA, sync)');
+                        }
+                        isControlSyncing = false;
                     }
                 } catch (e) {
                     console.warn('[Smartico] Error fetching control flag', e);
+                    isControlSyncing = false;
                 }
-                isControlSyncing = false;
                 return;
             }
+
             if (attempts < 50) setTimeout(waitForProfile, 100);
             else {
                 console.warn('[Smartico] API not ready, control flag not set after waiting');
@@ -105,73 +118,8 @@
             smarticoReady = true;
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({ event: 'smartico_initialized' });
-            syncLoginState();
         };
         document.head.appendChild(script);
-    }
-
-    /* ---------------- API ---------------- */
-    function fetchUserNumber(token, retries = 2) {
-        if (isFetching) return;
-        isFetching = true;
-
-        fetch(ACCOUNT_API, {
-            method: "GET",
-            headers: {
-                Authorization: "Token " + token,
-                "Content-type": "application/json; charset=UTF-8",
-                "X-Channel": "MOBILE_WEB"
-            }
-        })
-        .then(res => res.json())
-        .then(result => {
-            isFetching = false;
-            const number = result?.number;
-            if (!number) return console.warn('[Smartico] number not found');
-            loginUserWithId(number);
-        })
-        .catch(() => {
-            isFetching = false;
-            if (retries > 0) setTimeout(() => fetchUserNumber(token, retries - 1), 500);
-            else console.warn('[Smartico] API failed');
-        });
-    }
-
-    /* ---------------- LOGIN ---------------- */
-    function loginUserWithId(userId) {
-        if (!smarticoReady) return;
-        if (!userId || userId === currentUserId) return;
-
-        currentUserId = userId;
-        window._smartico_user_id = userId;
-        window._smartico?.setUserId?.(userId);
-
-        updateSmarticoSuspension();
-
-        window.dataLayer.push({ event: 'smartico_login', userId });
-        console.log('[Smartico] logged in:', userId);
-    }
-
-    function logoutUser() {
-        if (!currentUserId) return;
-
-        currentUserId = null;
-        window._smartico_user_id = null;
-
-        localStorage.removeItem('smartico_skin_v3');
-        localStorage.removeItem('smartico_control');
-        lastSuspendState = null;
-
-        window.dataLayer.push({ event: 'smartico_logout' });
-        console.log('[Smartico] logged out');
-    }
-
-    function syncLoginState() {
-        const token = getToken();
-        if (!token) { logoutUser(); lastTokenUsed = null; return; }
-        if (token === lastTokenUsed) return;
-        lastTokenUsed = token;
-        fetchUserNumber(token);
     }
 
     /* ---------------- SUSPENSION ---------------- */
@@ -212,26 +160,6 @@
             applySkinViaSegmentLight();   // лёгкая версия skin
         });
     });
-
-    /* ---------------- TOKEN WATCH ---------------- */
-    window.addEventListener('storage', e => {
-        if (e.key === 'token') syncLoginState();
-    });
-
-    (function () {
-        const setItem = localStorage.setItem;
-        const removeItem = localStorage.removeItem;
-
-        localStorage.setItem = function (k, v) {
-            setItem.apply(this, arguments);
-            if (k === 'token') syncLoginState();
-        };
-
-        localStorage.removeItem = function (k) {
-            removeItem.apply(this, arguments);
-            if (k === 'token') syncLoginState();
-        };
-    })();
 
     /* ---------------- BOOT ---------------- */
     setLanguage();
