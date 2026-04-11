@@ -26,5 +26,6 @@
     window.dataLayer.push({
       event: 'landing_registration_success'
     });
+    localStorage.setItem("isNewRegistration",true);
   }
 })();
