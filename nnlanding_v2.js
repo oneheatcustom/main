@@ -22,10 +22,11 @@
     /(?:\?|&|\$)landing=/.test(url);
 
   if (shouldPush) {
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({
-      event: 'landing_registration_success'
-    });
-    localStorage.setItem("isNewRegistration",true);
-  }
+  localStorage.setItem("isNewRegistration", true);
+
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({
+    event: 'landing_registration_success'
+  });
+}
 })();
