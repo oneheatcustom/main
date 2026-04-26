@@ -232,6 +232,7 @@ closeTooltip();
 tooltip.querySelector('.skip-tooltip').addEventListener('click', () => {closeTooltip(); handleBallAction(config, targetEl);});
 tooltip.querySelector('.tooltip-btn').addEventListener('click', () => {
 handleBallAction(config, targetEl, () => {closeTooltip(); _smartico.dp('dp:gf_section&id=1398');});});
+targetEl.addEventListener('click', closeTooltip, { once: true });
 window.addEventListener('resize', onResize);
 }
 
