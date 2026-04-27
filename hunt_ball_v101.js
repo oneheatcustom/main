@@ -31,45 +31,10 @@ const PAGE_MAP = [
 let currentEl = null;
 let activeTooltip = null;
 
-let isAuthorized = true;
-
-function handleLogout() {
-  if (!isAuthorized) return;
-  isAuthorized = false;
-
-  localStorage.removeItem("smartico_tags");
-  localStorage.removeItem("tooltip_seen");
-
-  if (currentEl) {
-    currentEl.remove();
-    currentEl = null;
-  }
-
-  removeTooltip();
+function isAuthorized() {
+  const token = localStorage.getItem("token");
+  return Boolean(token && token !== "null" && token !== "undefined");
 }
-
-// --- patch localStorage ---
-const originalRemoveItem = localStorage.removeItem;
-localStorage.removeItem = function (key) {
-  if (key === "token") {
-    handleLogout();
-  }
-  return originalRemoveItem.apply(this, arguments);
-};
-
-const originalSetItem = localStorage.setItem;
-localStorage.setItem = function (key, value) {
-  if (key === "token" && !value) {
-    handleLogout();
-  }
-  return originalSetItem.apply(this, arguments);
-};
-
-const originalClear = localStorage.clear;
-localStorage.clear = function () {
-  handleLogout();
-  return originalClear.apply(this, arguments);
-};
 
 function getUserTags() {
   let tags = [];
@@ -571,6 +536,19 @@ currentEl = null;
 }
 
 function render() {
+  if (!isAuthorized()) {
+  localStorage.removeItem("smartico_tags");
+  localStorage.removeItem("tooltip_seen");
+
+  removeTooltip();
+
+  if (currentEl) {
+    currentEl.remove();
+    currentEl = null;
+  }
+
+  return;
+}
   const config = getConfigForPage();
   const userTags = getUserTags();
   const allMallsCollected = PAGE_MAP.every(p => userTags.includes(p.id));
