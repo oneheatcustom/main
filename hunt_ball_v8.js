@@ -78,11 +78,6 @@ _smartico.on('props_change', function(props) {
 
     localStorage.setItem('smartico_tags', JSON.stringify(merged));
 
-    // если используешь кэш — обнови его
-    if (typeof collectedCache !== 'undefined') {
-      merged.forEach(tag => collectedCache.add(tag));
-    }
-
     render();
   }
 });
