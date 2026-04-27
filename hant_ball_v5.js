@@ -307,6 +307,7 @@ skipBtn.addEventListener('click', () => {
   });
 
   closeTooltip();
+  handleBallAction(config, targetEl);
 });
 
 exploreBtn.addEventListener('click', () => {
