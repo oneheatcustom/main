@@ -30,7 +30,7 @@ function getUserTags() {
   try {
     const stored = JSON.parse(localStorage.getItem('smartico_tags') || '[]');
     if (Array.isArray(stored)) {
-      tags = stored;
+      tags = stored.filter(tag => tag.startsWith('LEMON_HUNT'));
     }
   } catch (e) {
     tags = [];
@@ -39,8 +39,7 @@ function getUserTags() {
   const smartTags = window._smartico?.api?.getUserProfile()?.core_public_tags;
 
   if (Array.isArray(smartTags) && smartTags.length) {
-    tags = smartTags;
-
+    tags = smartTags.filter(tag => tag.startsWith('LEMON_HUNT'));
     try {
       localStorage.setItem('smartico_tags', JSON.stringify(tags));
     } catch (e) {}
@@ -50,14 +49,12 @@ function getUserTags() {
 }
 
 
-_smartico.on('props_change', function(props) {
-if (props.core_public_tags !== undefined) {
-localStorage.setItem('smartico_tags', JSON.stringify(props.core_public_tags));
-if (!currentEl) {
-      render();
-    }
-}
-});
+//_smartico.on('props_change', function(props) {
+//if (props.core_public_tags !== undefined) {
+//localStorage.setItem('smartico_tags', JSON.stringify(props.core_public_tags));
+//render();
+//}
+//});
 
 function getConfigForPage() {
 const path = location.pathname;
