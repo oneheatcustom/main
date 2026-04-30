@@ -55,6 +55,7 @@
       background-repeat:no-repeat;
       cursor:pointer;
       overflow:hidden;
+      min-height: 50px;
     `;
 
     button.innerHTML = `
