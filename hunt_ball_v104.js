@@ -26,7 +26,7 @@ const PAGE_MAP = [
 { match: /(^|\/)my-bets\/open\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:10', type_ball: 'redball' },
 { match: /(^|\/)casino\/slots\/categories\/in-parimatch-slots\/?$/, image: '/content/uploads/Golden_Ball_bb09215114.webp', id: 'LEMON_HUNT:11', type_ball: 'goldenball' },
 { match: /(^|\/)national-events\/?$/, image: '/content/uploads/Golden_Ball_bb09215114.webp', id: 'LEMON_HUNT:12', type_ball: 'goldenball' },
-{ match: /(^|\/)casino\/slots\/categories\/in-parimatch-slots\/?$/, image: '/content/uploads/Warner_Ball_13a04e1f4d.webp', id: 'LEMON_HUNT:13', type_ball: 'sponsorball' }
+{ match: /(^|\/)casino\/slots\/?$/, image: '/content/uploads/Warner_Ball_13a04e1f4d.webp', id: 'LEMON_HUNT:13', type_ball: 'sponsorball' }
 ];
 
 let currentEl = null;
