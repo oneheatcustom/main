@@ -16,16 +16,17 @@ reRenderDelay: 300
 const PAGE_MAP = [
 { match: /^\/(?:en|hi|bn|te|mr|ta)?\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:1', type_ball: 'redball' },
 { match: /(^|\/)menu\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:2', type_ball: 'redball' },
-{ match: /(^|\/)specials\/premier-league\/live\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:3', type_ball: 'redball' },
-{ match: /(^|\/)table-tennis\/live\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:4', type_ball: 'redball' },
-{ match: /(^|\/)casino\/instant-games\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:5', type_ball: 'redball' },
-{ match: /(^|\/)casino\/instant-games\/categories\/in-new-instant-game\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:6', type_ball: 'redball' },
-{ match: /(^|\/)casino\/tv-games\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:7', type_ball: 'redball' },
-{ match: /(^|\/)casino\/slots\/theme\/in-books\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:8', type_ball: 'redball' },
-{ match: /(^|\/)support\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:9', type_ball: 'redball' },
-{ match: /(^|\/)my-bets\/open\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:10', type_ball: 'redball' },
-{ match: /(^|\/)casino\/slots\/categories\/in-parimatch-slots\/?$/, image: '/content/uploads/Golden_Ball_bb09215114.webp', id: 'LEMON_HUNT:11', type_ball: 'goldenball' },
-{ match: /(^|\/)national-events\/?$/, image: '/content/uploads/Golden_Ball_bb09215114.webp', id: 'LEMON_HUNT:12', type_ball: 'goldenball' }
+{ match: /(^|\/)top-express\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:3', type_ball: 'redball' },
+{ match: /(^|\/)cricket\/live\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:4', type_ball: 'redball' },
+{ match: /(^|\/)kabaddi\/live\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:5', type_ball: 'redball' },
+{ match: /(^|\/)national-events\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:6', type_ball: 'redball' },
+{ match: /(^|\/)casino\/live-casino\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:7', type_ball: 'redball' },
+{ match: /(^|\/)casino\/slots\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:8', type_ball: 'redball' },
+{ match: /(^|\/)casino\/virtual-sports\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:9', type_ball: 'redball' },
+{ match: /(^|\/)casino\/instant-games\/game\/smartsoft-in-jetx-insta\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:10', type_ball: 'redball' },
+{ match: /(^|\/)my-bets\/open\/?$/, image: '/content/uploads/Golden_Ball_bb09215114.webp', id: 'LEMON_HUNT:11', type_ball: 'goldenball' },
+{ match: /(^|\/)promo\/?$/, image: '/content/uploads/Golden_Ball_bb09215114.webp', id: 'LEMON_HUNT:12', type_ball: 'goldenball' },
+{ match: /(^|\/)casino\/instant-games\/?$/, image: '/content/uploads/Jet_X_c271ecdada.png', id: 'LEMON_HUNT:13', type_ball: 'sponsorball' }
 ];
 
 let currentEl = null;
