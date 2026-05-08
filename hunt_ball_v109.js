@@ -426,7 +426,7 @@ if (!tags.includes(config.id)) {
 
 
   _smartico.updatePublicTags('add', [config.id]);
-  _smartico.action('lemon_hunt_action_week_2', {
+  _smartico.action('lemon_hunt_action_week_3', {
     custom_location: config.type_ball
   });
 
