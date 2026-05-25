@@ -26,7 +26,7 @@ const PAGE_MAP = [
 { match: /(^|\/)support\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:10', type_ball: 'redball' },
 { match: /(^|\/)top-express\/?$/, image: '/content/uploads/Golden_Ball_bb09215114.webp', id: 'LEMON_HUNT:11', type_ball: 'goldenball' },
 { match: /^\/(?:en|hi|bn|te|mr|ta)?\/?$/, image: '/content/uploads/Golden_Ball_bb09215114.webp', id: 'LEMON_HUNT:12', type_ball: 'goldenball' },
-{ match: /(^|\/)casino\/instant-games\/game\/parimatch-games-warners-kaboom-inst\/?$/, image: '/content/uploads/Warner_Ball_80953c2007.png', id: 'LEMON_HUNT:13', type_ball: 'sponsorball' }
+{ match: /(^|\/)casino\/instant-games\/providers\/parimatch-games\/?$/, image: '/content/uploads/Warner_Ball_80953c2007.png', id: 'LEMON_HUNT:13', type_ball: 'sponsorball' }
 ];
 
 let currentEl = null;
