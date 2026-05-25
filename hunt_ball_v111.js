@@ -14,19 +14,19 @@ reRenderDelay: 300
 };
 
 const PAGE_MAP = [
-{ match: /^\/(?:en|hi|bn|te|mr|ta)?\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:1', type_ball: 'redball' },
-{ match: /(^|\/)search\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:2', type_ball: 'redball' },
-{ match: /(^|\/)national-events\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:3', type_ball: 'redball' },
-{ match: /(^|\/)basketball\/live\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:4', type_ball: 'redball' },
-{ match: /(^|\/)support\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:5', type_ball: 'redball' },
-{ match: /(^|\/)my-bets\/open\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:6', type_ball: 'redball' },
+{ match: /(^|\/)search\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:1', type_ball: 'redball' },
+{ match: /(^|\/)menu\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:2', type_ball: 'redball' },
+{ match: /(^|\/)horseracing\/0-12\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:3', type_ball: 'redball' },
+{ match: /(^|\/)cricket\/live\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:4', type_ball: 'redball' },
+{ match: /(^|\/)kabaddi\/live\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:5', type_ball: 'redball' },
+{ match: /(^|\/)national-events\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:6', type_ball: 'redball' },
 { match: /(^|\/)casino\/live-casino\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:7', type_ball: 'redball' },
 { match: /(^|\/)casino\/slots\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:8', type_ball: 'redball' },
 { match: /(^|\/)casino\/instant-games\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:9', type_ball: 'redball' },
-{ match: /(^|\/)casino\/live-casino\/categories\/in-top-lc\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:10', type_ball: 'redball' },
-{ match: /(^|\/)menu\/?$/, image: '/content/uploads/Golden_Ball_bb09215114.webp', id: 'LEMON_HUNT:11', type_ball: 'goldenball' },
-{ match: /(^|\/)promo\/?$/, image: '/content/uploads/Golden_Ball_bb09215114.webp', id: 'LEMON_HUNT:12', type_ball: 'goldenball' },
-{ match: /(^|\/)casino\/instant-games\/game\/scorum-aviatrix-in-ig-aviatrix\/?$/, image: '/content/uploads/Aviatrix_46a30176f6.png', id: 'LEMON_HUNT:13', type_ball: 'sponsorball' }
+{ match: /(^|\/)support\/?$/, image: '/content/uploads/Red_Ball_3705195b14.webp', id: 'LEMON_HUNT:10', type_ball: 'redball' },
+{ match: /(^|\/)top-express\/?$/, image: '/content/uploads/Golden_Ball_bb09215114.webp', id: 'LEMON_HUNT:11', type_ball: 'goldenball' },
+{ match: /^\/(?:en|hi|bn|te|mr|ta)?\/?$/, image: '/content/uploads/Golden_Ball_bb09215114.webp', id: 'LEMON_HUNT:12', type_ball: 'goldenball' },
+{ match: /(^|\/)casino\/instant-games\/game\/parimatch-games-warners-kaboom-inst\/?$/, image: '/content/uploads/Warner_Ball_80953c2007.png', id: 'LEMON_HUNT:13', type_ball: 'sponsorball' }
 ];
 
 let currentEl = null;
@@ -426,7 +426,7 @@ if (!tags.includes(config.id)) {
 
 
   _smartico.updatePublicTags('add', [config.id]);
-  _smartico.action('lemon_hunt_action_week_4', {
+  _smartico.action('lemon_hunt_action_week_5', {
     custom_location: config.type_ball
   });
 
