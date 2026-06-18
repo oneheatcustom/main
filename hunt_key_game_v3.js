@@ -365,7 +365,7 @@ exploreBtn.addEventListener('click', () => {
   closeTooltip();
 
   handleBallAction(config, targetEl, () => {
-    _smartico.dp('dp:gf_tournaments&id=5339');
+    _smartico.dp('dp:gf_tournaments');
   });
 });
 
