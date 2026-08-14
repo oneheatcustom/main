@@ -13,7 +13,7 @@
     function setLanguage() { window._smartico_language = (document.documentElement.lang || 'EN').toUpperCase(); }
     function isRestrictedPage() { 
         const path = location.pathname.replace(/\/+$/, '').toLowerCase();
-        return /(^|\/)(deposit|withdraw|support|payments|my-account|game|phone-confirmation|bonuses|promo|top-express)(\/|$)/.test(path);
+        return /(^|\/)(deposit|withdraw|support|payments|game|phone-confirmation|bonuses|promo|top-express)(\/|$)/.test(path);
     }
 
     let isControlSyncing = false;
